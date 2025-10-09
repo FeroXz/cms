@@ -34,7 +34,12 @@
                         <td><?= htmlspecialchars($post['published_at'] ?? '—') ?></td>
                         <td>
                             <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/news&edit=<?= (int)$post['id'] ?>">Bearbeiten</a>
-                            <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/news&delete=<?= (int)$post['id'] ?>" onclick="return confirm('Beitrag wirklich löschen?');">Löschen</a>
+                            <form method="post" style="display:inline" onsubmit="return confirm('Beitrag wirklich löschen?');">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="delete_news">
+                                <input type="hidden" name="post_id" value="<?= (int)$post['id'] ?>">
+                                <button type="submit" class="btn btn-secondary">Löschen</button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -44,6 +49,7 @@
     <div class="card">
         <h2><?= $editPost ? 'Beitrag bearbeiten' : 'Neuer Beitrag' ?></h2>
         <form method="post">
+            <?= csrf_field() ?>
             <?php if ($editPost): ?>
                 <input type="hidden" name="id" value="<?= (int)$editPost['id'] ?>">
             <?php endif; ?>

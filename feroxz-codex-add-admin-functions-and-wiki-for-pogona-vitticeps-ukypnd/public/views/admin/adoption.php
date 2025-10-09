@@ -25,7 +25,12 @@
                         <td><?= htmlspecialchars($listing['price'] ?? 'n/a') ?></td>
                         <td>
                             <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/adoption&edit=<?= (int)$listing['id'] ?>">Bearbeiten</a>
-                            <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/adoption&delete=<?= (int)$listing['id'] ?>" onclick="return confirm('Eintrag löschen?');">Löschen</a>
+                            <form method="post" style="display:inline" onsubmit="return confirm('Eintrag löschen?');">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="delete_listing">
+                                <input type="hidden" name="listing_id" value="<?= (int)$listing['id'] ?>">
+                                <button type="submit" class="btn btn-secondary">Löschen</button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -35,6 +40,7 @@
     <div class="card">
         <h2><?= $editListing ? 'Inserat bearbeiten' : 'Neues Inserat' ?></h2>
         <form method="post" enctype="multipart/form-data">
+            <?= csrf_field() ?>
             <?php if ($editListing): ?>
                 <input type="hidden" name="id" value="<?= (int)$editListing['id'] ?>">
             <?php endif; ?>

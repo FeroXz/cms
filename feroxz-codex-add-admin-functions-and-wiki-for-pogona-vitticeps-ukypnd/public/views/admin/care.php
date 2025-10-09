@@ -34,7 +34,12 @@
                         </td>
                         <td>
                             <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/care&edit=<?= (int)$article['id'] ?>">Bearbeiten</a>
-                            <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/care&delete=<?= (int)$article['id'] ?>" onclick="return confirm('Artikel wirklich löschen?');">Löschen</a>
+                            <form method="post" style="display:inline" onsubmit="return confirm('Artikel wirklich löschen?');">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="delete_care_article">
+                                <input type="hidden" name="article_id" value="<?= (int)$article['id'] ?>">
+                                <button type="submit" class="btn btn-secondary">Löschen</button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -44,6 +49,7 @@
     <div class="card">
         <h2><?= $editArticle ? 'Artikel bearbeiten' : 'Neuer Artikel' ?></h2>
         <form method="post">
+            <?= csrf_field() ?>
             <?php if ($editArticle): ?>
                 <input type="hidden" name="id" value="<?= (int)$editArticle['id'] ?>">
             <?php endif; ?>

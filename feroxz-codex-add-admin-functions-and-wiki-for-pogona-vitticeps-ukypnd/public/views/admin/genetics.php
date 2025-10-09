@@ -33,7 +33,12 @@
                             <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                                 <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/genetics&amp;species=<?= urlencode($species['slug']) ?>">Anzeigen</a>
                                 <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/genetics&amp;edit_species=<?= (int)$species['id'] ?>">Bearbeiten</a>
-                                <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/genetics&amp;delete_species=<?= (int)$species['id'] ?>" onclick="return confirm('Art wirklich löschen? Alle zugehörigen Gene werden entfernt.');">Löschen</a>
+                                <form method="post" style="display:inline" onsubmit="return confirm('Art wirklich löschen? Alle zugehörigen Gene werden entfernt.');">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="form_type" value="delete_species">
+                                    <input type="hidden" name="species_id" value="<?= (int)$species['id'] ?>">
+                                    <button type="submit" class="btn btn-secondary">Löschen</button>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -44,6 +49,7 @@
     <div class="card">
         <h2><?= $editSpecies ? 'Art bearbeiten' : 'Neue Art' ?></h2>
         <form method="post">
+            <?= csrf_field() ?>
             <input type="hidden" name="form_type" value="species">
             <?php if ($editSpecies): ?>
                 <input type="hidden" name="id" value="<?= (int)$editSpecies['id'] ?>">
@@ -131,7 +137,13 @@
                                     </td>
                                     <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                                         <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/genetics&amp;edit_gene=<?= (int)$gene['id'] ?>">Bearbeiten</a>
-                                        <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/genetics&amp;delete_gene=<?= (int)$gene['id'] ?>" onclick="return confirm('Gen wirklich löschen?');">Löschen</a>
+                                        <form method="post" style="display:inline" onsubmit="return confirm('Gen wirklich löschen?');">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="form_type" value="delete_gene">
+                                            <input type="hidden" name="gene_id" value="<?= (int)$gene['id'] ?>">
+                                            <input type="hidden" name="species_slug" value="<?= htmlspecialchars($selectedSpeciesSlug ?? '') ?>">
+                                            <button type="submit" class="btn btn-secondary">Löschen</button>
+                                        </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -145,6 +157,7 @@
                     <p>Bitte zuerst eine Art auswählen.</p>
                 <?php else: ?>
                     <form method="post">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="form_type" value="gene">
                         <input type="hidden" name="species_id" value="<?= (int)$selectedSpecies['id'] ?>">
                         <input type="hidden" name="species_slug" value="<?= htmlspecialchars($selectedSpecies['slug']) ?>">

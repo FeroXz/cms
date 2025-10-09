@@ -29,7 +29,12 @@
                         <td>
                             <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/users&edit=<?= (int)$user['id'] ?>">Bearbeiten</a>
                             <?php if ($user['id'] !== current_user()['id']): ?>
-                                <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/users&delete=<?= (int)$user['id'] ?>" onclick="return confirm('Benutzer löschen?');">Löschen</a>
+                                <form method="post" style="display:inline" onsubmit="return confirm('Benutzer löschen?');">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="action" value="delete_user">
+                                    <input type="hidden" name="user_id" value="<?= (int)$user['id'] ?>">
+                                    <button type="submit" class="btn btn-secondary">Löschen</button>
+                                </form>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -40,6 +45,7 @@
     <div class="card">
         <h2><?= $editUser ? 'Benutzer bearbeiten' : 'Benutzer anlegen' ?></h2>
         <form method="post">
+            <?= csrf_field() ?>
             <?php if ($editUser): ?>
                 <input type="hidden" name="id" value="<?= (int)$editUser['id'] ?>">
             <?php endif; ?>

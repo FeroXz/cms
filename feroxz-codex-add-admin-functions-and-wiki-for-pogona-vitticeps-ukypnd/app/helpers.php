@@ -71,6 +71,57 @@ function flash(string $key, ?string $message = null): ?string
     return null;
 }
 
+function csrf_token(): string
+{
+    $now = time();
+    if (!isset($_SESSION['csrf_tokens']) || !is_array($_SESSION['csrf_tokens'])) {
+        $_SESSION['csrf_tokens'] = [];
+    }
+
+    foreach ($_SESSION['csrf_tokens'] as $storedToken => $expiry) {
+        if (!is_int($expiry) || $expiry < $now) {
+            unset($_SESSION['csrf_tokens'][$storedToken]);
+        }
+    }
+
+    if (count($_SESSION['csrf_tokens']) > 50) {
+        $_SESSION['csrf_tokens'] = array_slice($_SESSION['csrf_tokens'], -50, null, true);
+    }
+
+    $token = bin2hex(random_bytes(32));
+    $_SESSION['csrf_tokens'][$token] = $now + 1800;
+
+    return $token;
+}
+
+function verify_csrf_token(?string $token): bool
+{
+    if (!$token || !isset($_SESSION['csrf_tokens'][$token])) {
+        return false;
+    }
+
+    $expiry = $_SESSION['csrf_tokens'][$token];
+    unset($_SESSION['csrf_tokens'][$token]);
+
+    return is_int($expiry) && $expiry >= time();
+}
+
+function require_csrf_token(string $route, array $params = []): void
+{
+    $token = $_POST['_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+    if (verify_csrf_token($token)) {
+        return;
+    }
+
+    flash('error', 'Sicherheitsüberprüfung fehlgeschlagen. Bitte Formular erneut absenden.');
+    redirect($route, $params);
+}
+
+function csrf_field(): string
+{
+    return '<input type="hidden" name="_token" value="' . htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">';
+}
+
 function ensure_directory(string $dir): void
 {
     if (is_dir($dir)) {

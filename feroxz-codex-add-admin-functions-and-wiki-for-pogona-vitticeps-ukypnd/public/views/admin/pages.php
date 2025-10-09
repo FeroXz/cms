@@ -59,7 +59,12 @@
                         </td>
                         <td>
                             <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/pages&edit=<?= (int)$pageItem['id'] ?>">Bearbeiten</a>
-                            <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/pages&delete=<?= (int)$pageItem['id'] ?>" onclick="return confirm('Seite wirklich löschen?');">Löschen</a>
+                            <form method="post" style="display:inline" onsubmit="return confirm('Seite wirklich löschen?');">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="delete_page">
+                                <input type="hidden" name="page_id" value="<?= (int)$pageItem['id'] ?>">
+                                <button type="submit" class="btn btn-secondary">Löschen</button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -69,6 +74,7 @@
     <div class="card">
         <h2><?= $editPage ? 'Seite bearbeiten' : 'Neue Seite' ?></h2>
         <form method="post">
+            <?= csrf_field() ?>
             <?php if ($editPage): ?>
                 <input type="hidden" name="id" value="<?= (int)$editPage['id'] ?>">
             <?php endif; ?>

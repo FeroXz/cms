@@ -6,6 +6,7 @@
     <div class="alert alert-success" role="status" aria-live="polite"><?= htmlspecialchars($flashSuccess) ?></div>
 <?php endif; ?>
 <form method="post" class="grid cards" style="margin-top:1.5rem;">
+    <?= csrf_field() ?>
     <?php foreach ($contentGroups as $groupName => $entries): ?>
         <fieldset class="card" style="display:flex;flex-direction:column;gap:1rem;">
             <legend style="font-size:1.25rem;font-weight:600;margin-bottom:0.5rem;">

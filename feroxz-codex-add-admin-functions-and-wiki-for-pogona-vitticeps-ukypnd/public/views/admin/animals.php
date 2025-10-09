@@ -45,7 +45,12 @@
                         </td>
                         <td>
                             <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/animals&edit=<?= (int)$animal['id'] ?>">Bearbeiten</a>
-                            <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/animals&delete=<?= (int)$animal['id'] ?>" onclick="return confirm('Tier wirklich löschen?');">Löschen</a>
+                            <form method="post" style="display:inline" onsubmit="return confirm('Tier wirklich löschen?');">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="delete_animal">
+                                <input type="hidden" name="animal_id" value="<?= (int)$animal['id'] ?>">
+                                <button type="submit" class="btn btn-secondary">Löschen</button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -55,6 +60,7 @@
     <div class="card">
         <h2><?= $editAnimal ? 'Tier bearbeiten' : 'Neues Tier' ?></h2>
         <form method="post" enctype="multipart/form-data">
+            <?= csrf_field() ?>
             <?php if ($editAnimal): ?>
                 <input type="hidden" name="id" value="<?= (int)$editAnimal['id'] ?>">
             <?php endif; ?>

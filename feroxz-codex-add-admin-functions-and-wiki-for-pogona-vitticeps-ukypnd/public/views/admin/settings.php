@@ -7,6 +7,7 @@
 <?php endif; ?>
 <div class="card">
     <form method="post">
+        <?= csrf_field() ?>
         <?php $themes = get_available_themes(); ?>
         <label>Seitentitel
             <input type="text" name="site_title" value="<?= htmlspecialchars($settings['site_title'] ?? '') ?>">

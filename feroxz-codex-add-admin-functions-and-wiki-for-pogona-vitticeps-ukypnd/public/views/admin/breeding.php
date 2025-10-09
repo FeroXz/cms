@@ -38,7 +38,12 @@
                             </div>
                             <div class="plan-entry__actions">
                                 <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/breeding&edit_plan=<?= (int)$plan['id'] ?>">Bearbeiten</a>
-                                <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/breeding&delete_plan=<?= (int)$plan['id'] ?>" onclick="return confirm('Zuchtplan wirklich löschen?');">Löschen</a>
+                                <form method="post" style="display:inline" onsubmit="return confirm('Zuchtplan wirklich löschen?');">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="form" value="delete_plan">
+                                    <input type="hidden" name="plan_id" value="<?= (int)$plan['id'] ?>">
+                                    <button type="submit" class="btn btn-secondary">Löschen</button>
+                                </form>
                             </div>
                         </header>
                         <?php if (!empty($plan['expected_genetics'])): ?>
@@ -83,7 +88,13 @@
                                         <?php if (!empty($parent['notes'])): ?>
                                             <div><?= nl2br(htmlspecialchars($parent['notes'])) ?></div>
                                         <?php endif; ?>
-                                        <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/breeding&delete_parent=<?= (int)$parent['id'] ?>&plan=<?= (int)$plan['id'] ?>" onclick="return confirm('Elternteil entfernen?');">Entfernen</a>
+                                        <form method="post" style="display:inline" onsubmit="return confirm('Elternteil entfernen?');">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="form" value="delete_parent">
+                                            <input type="hidden" name="parent_id" value="<?= (int)$parent['id'] ?>">
+                                            <input type="hidden" name="plan_id" value="<?= (int)$plan['id'] ?>">
+                                            <button type="submit" class="btn btn-secondary">Entfernen</button>
+                                        </form>
                                     </li>
                                 <?php endforeach; ?>
                             </ul>
@@ -96,6 +107,7 @@
     <div class="card">
         <h2><?= $editPlan ? 'Zuchtplan bearbeiten' : 'Neuer Zuchtplan' ?></h2>
         <form method="post">
+            <?= csrf_field() ?>
             <input type="hidden" name="form" value="plan">
             <?php if ($editPlan): ?>
                 <input type="hidden" name="id" value="<?= (int)$editPlan['id'] ?>">
@@ -121,6 +133,7 @@
             <hr style="margin:2rem 0;opacity:0.3;">
             <h3>Elterntier hinzufügen</h3>
             <form method="post">
+                <?= csrf_field() ?>
                 <input type="hidden" name="form" value="parent">
                 <label>Zuchtplan
                     <select name="plan_id" required>
@@ -174,6 +187,7 @@
             <hr style="margin:2rem 0;opacity:0.3;">
             <h3>Verpaarung anlegen</h3>
             <form method="post" data-breeding-pair-form>
+                <?= csrf_field() ?>
                 <input type="hidden" name="form" value="pair">
                 <label>Zuchtplan
                     <select name="pair_plan_id" required>

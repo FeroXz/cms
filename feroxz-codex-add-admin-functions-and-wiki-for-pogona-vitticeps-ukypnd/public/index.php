@@ -8,6 +8,7 @@ $GLOBALS['currentRoute'] = $route;
 switch ($route) {
     case 'login':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_csrf_token('login');
             $username = trim($_POST['username'] ?? '');
             $password = $_POST['password'] ?? '';
             if (authenticate($pdo, $username, $password)) {
@@ -193,6 +194,7 @@ switch ($route) {
             redirect('admin/dashboard');
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_csrf_token('admin/settings');
             update_settings($pdo, [
                 'site_title' => $_POST['site_title'] ?? '',
                 'site_tagline' => $_POST['site_tagline'] ?? '',
@@ -217,6 +219,7 @@ switch ($route) {
             redirect('admin/dashboard');
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_csrf_token('admin/content');
             $definitions = get_content_definitions();
             $blocks = $_POST['blocks'] ?? [];
             $payload = [];
@@ -244,6 +247,18 @@ switch ($route) {
             redirect('admin/dashboard');
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (($_POST['action'] ?? '') === 'delete_page') {
+                require_csrf_token('admin/pages');
+                $pageId = (int)($_POST['page_id'] ?? 0);
+                if ($pageId) {
+                    delete_page($pdo, $pageId);
+                    flash('success', 'Seite gelöscht.');
+                }
+                redirect('admin/pages');
+            }
+
+            $redirectParams = !empty($_POST['id']) ? ['edit' => (int)$_POST['id']] : [];
+            require_csrf_token('admin/pages', $redirectParams);
             $data = [
                 'title' => trim($_POST['title'] ?? ''),
                 'slug' => trim($_POST['slug'] ?? ''),
@@ -265,11 +280,6 @@ switch ($route) {
                 flash('error', 'Bitte geben Sie Titel und Inhalt ein, um die Seite zu speichern.');
             }
         }
-        if (isset($_GET['delete'])) {
-            delete_page($pdo, (int)$_GET['delete']);
-            flash('success', 'Seite gelöscht.');
-            redirect('admin/pages');
-        }
         $settings = get_all_settings($pdo);
         $pages = get_pages($pdo);
         $editPage = null;
@@ -288,6 +298,18 @@ switch ($route) {
             redirect('admin/dashboard');
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (($_POST['action'] ?? '') === 'delete_news') {
+                require_csrf_token('admin/news');
+                $postId = (int)($_POST['post_id'] ?? 0);
+                if ($postId) {
+                    delete_news($pdo, $postId);
+                    flash('success', 'Neuigkeit gelöscht.');
+                }
+                redirect('admin/news');
+            }
+
+            $redirectParams = !empty($_POST['id']) ? ['edit' => (int)$_POST['id']] : [];
+            require_csrf_token('admin/news', $redirectParams);
             $data = [
                 'title' => trim($_POST['title'] ?? ''),
                 'slug' => trim($_POST['slug'] ?? ''),
@@ -309,11 +331,6 @@ switch ($route) {
                 flash('error', 'Bitte tragen Sie einen Titel und den vollständigen Textbeitrag ein.');
             }
         }
-        if (isset($_GET['delete'])) {
-            delete_news($pdo, (int)$_GET['delete']);
-            flash('success', 'Neuigkeit gelöscht.');
-            redirect('admin/news');
-        }
         $settings = get_all_settings($pdo);
         $newsPosts = get_news($pdo);
         $editPost = null;
@@ -333,6 +350,18 @@ switch ($route) {
         }
         $prefillAnimal = null;
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (($_POST['action'] ?? '') === 'delete_animal') {
+                require_csrf_token('admin/animals');
+                $animalId = (int)($_POST['animal_id'] ?? 0);
+                if ($animalId) {
+                    delete_animal($pdo, $animalId);
+                    flash('success', 'Tier gelöscht.');
+                }
+                redirect('admin/animals');
+            }
+
+            $redirectParams = !empty($_POST['id']) ? ['edit' => (int)$_POST['id']] : [];
+            require_csrf_token('admin/animals', $redirectParams);
             $data = $_POST;
             $data['name'] = trim($data['name'] ?? '');
             $data['species'] = trim($data['species'] ?? '');
@@ -364,11 +393,6 @@ switch ($route) {
                 redirect('admin/animals');
             }
         }
-        if (isset($_GET['delete'])) {
-            delete_animal($pdo, (int)$_GET['delete']);
-            flash('success', 'Tier gelöscht.');
-            redirect('admin/animals');
-        }
         $animals = get_animals($pdo);
         $users = get_users($pdo);
         $settings = get_all_settings($pdo);
@@ -391,6 +415,7 @@ switch ($route) {
             $formType = $_POST['form'] ?? 'plan';
             if ($formType === 'parent') {
                 $planId = (int)($_POST['plan_id'] ?? 0);
+                require_csrf_token('admin/breeding', $planId ? ['edit_plan' => $planId] : []);
                 if ($planId) {
                     $parentType = $_POST['parent_type'] ?? 'animal';
                     $data = [
@@ -416,6 +441,7 @@ switch ($route) {
                 redirect('admin/breeding', ['edit_plan' => $planId]);
             } elseif ($formType === 'pair') {
                 $planId = (int)($_POST['pair_plan_id'] ?? 0);
+                require_csrf_token('admin/breeding', $planId ? ['edit_plan' => $planId] : []);
                 if ($planId) {
                     $parents = [];
                     $labels = ['parent_a' => 'erstes Elternteil', 'parent_b' => 'zweites Elternteil'];
@@ -451,7 +477,27 @@ switch ($route) {
                     flash('error', 'Bitte wählen Sie einen Zuchtplan aus.');
                 }
                 redirect('admin/breeding', ['edit_plan' => $planId]);
+            } elseif ($formType === 'delete_plan') {
+                $planId = (int)($_POST['plan_id'] ?? 0);
+                require_csrf_token('admin/breeding');
+                if ($planId) {
+                    delete_breeding_plan($pdo, $planId);
+                    flash('success', 'Zuchtplan gelöscht.');
+                }
+                redirect('admin/breeding');
+            } elseif ($formType === 'delete_parent') {
+                $planId = (int)($_POST['plan_id'] ?? 0);
+                $redirectParams = $planId ? ['edit_plan' => $planId] : [];
+                require_csrf_token('admin/breeding', $redirectParams);
+                $parentId = (int)($_POST['parent_id'] ?? 0);
+                if ($parentId) {
+                    delete_breeding_parent($pdo, $parentId);
+                    flash('success', 'Elternteil entfernt.');
+                }
+                redirect('admin/breeding', $redirectParams);
             } else {
+                $redirectParams = !empty($_POST['id']) ? ['edit_plan' => (int)$_POST['id']] : [];
+                require_csrf_token('admin/breeding', $redirectParams);
                 $data = [
                     'title' => trim($_POST['title'] ?? ''),
                     'season' => trim($_POST['season'] ?? ''),
@@ -474,16 +520,6 @@ switch ($route) {
                 }
             }
         }
-        if (isset($_GET['delete_plan'])) {
-            delete_breeding_plan($pdo, (int)$_GET['delete_plan']);
-            flash('success', 'Zuchtplan gelöscht.');
-            redirect('admin/breeding');
-        }
-        if (isset($_GET['delete_parent'])) {
-            delete_breeding_parent($pdo, (int)$_GET['delete_parent']);
-            flash('success', 'Elternteil entfernt.');
-            redirect('admin/breeding', ['edit_plan' => (int)($_GET['plan'] ?? 0)]);
-        }
         $settings = get_all_settings($pdo);
         $animals = get_animals($pdo);
         $breedingPlans = get_breeding_plans($pdo);
@@ -503,6 +539,18 @@ switch ($route) {
             redirect('admin/dashboard');
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (($_POST['action'] ?? '') === 'delete_listing') {
+                require_csrf_token('admin/adoption');
+                $listingId = (int)($_POST['listing_id'] ?? 0);
+                if ($listingId) {
+                    delete_listing($pdo, $listingId);
+                    flash('success', 'Eintrag gelöscht.');
+                }
+                redirect('admin/adoption');
+            }
+
+            $redirectParams = !empty($_POST['id']) ? ['edit' => (int)$_POST['id']] : [];
+            require_csrf_token('admin/adoption', $redirectParams);
             $data = $_POST;
             if (!empty($_FILES['image']['name'])) {
                 $upload = handle_upload($_FILES['image']);
@@ -517,11 +565,6 @@ switch ($route) {
                 create_listing($pdo, $data);
                 flash('success', 'Abgabeintrag erstellt.');
             }
-            redirect('admin/adoption');
-        }
-        if (isset($_GET['delete'])) {
-            delete_listing($pdo, (int)$_GET['delete']);
-            flash('success', 'Eintrag gelöscht.');
             redirect('admin/adoption');
         }
         $listings = get_listings($pdo);
@@ -542,6 +585,18 @@ switch ($route) {
             redirect('admin/dashboard');
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (($_POST['action'] ?? '') === 'delete_care_article') {
+                require_csrf_token('admin/care');
+                $articleId = (int)($_POST['article_id'] ?? 0);
+                if ($articleId) {
+                    delete_care_article($pdo, $articleId);
+                    flash('success', 'Artikel gelöscht.');
+                }
+                redirect('admin/care');
+            }
+
+            $redirectParams = !empty($_POST['id']) ? ['edit' => (int)$_POST['id']] : [];
+            require_csrf_token('admin/care', $redirectParams);
             $data = [
                 'title' => trim($_POST['title'] ?? ''),
                 'slug' => trim($_POST['slug'] ?? ''),
@@ -561,11 +616,6 @@ switch ($route) {
             } else {
                 flash('error', 'Bitte formulieren Sie einen Titel und den vollständigen Artikelinhalt.');
             }
-        }
-        if (isset($_GET['delete'])) {
-            delete_care_article($pdo, (int)$_GET['delete']);
-            flash('success', 'Artikel gelöscht.');
-            redirect('admin/care');
         }
         $settings = get_all_settings($pdo);
         $careArticles = get_care_articles($pdo);
@@ -588,6 +638,8 @@ switch ($route) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $formType = $_POST['form_type'] ?? '';
             if ($formType === 'species') {
+                $redirectParams = !empty($_POST['id']) ? ['edit_species' => (int)$_POST['id']] : [];
+                require_csrf_token('admin/genetics', $redirectParams);
                 $data = [
                     'name' => trim($_POST['name'] ?? ''),
                     'slug' => trim($_POST['slug'] ?? ''),
@@ -615,6 +667,12 @@ switch ($route) {
                 }
             } elseif ($formType === 'gene') {
                 $speciesId = (int)($_POST['species_id'] ?? 0);
+                $speciesSlugParam = $_POST['species_slug'] ?? null;
+                $redirectParams = $speciesSlugParam ? ['species' => $speciesSlugParam] : [];
+                if (!empty($_POST['id'])) {
+                    $redirectParams['edit_gene'] = (int)$_POST['id'];
+                }
+                require_csrf_token('admin/genetics', $redirectParams);
                 $data = [
                     'species_id' => $speciesId,
                     'name' => trim($_POST['name'] ?? ''),
@@ -647,30 +705,35 @@ switch ($route) {
                         flash('error', 'Gen konnte nicht gespeichert werden.');
                     }
                 }
+            } elseif ($formType === 'delete_species') {
+                require_csrf_token('admin/genetics');
+                $speciesId = (int)($_POST['species_id'] ?? 0);
+                if ($speciesId) {
+                    $species = get_genetic_species_by_id($pdo, $speciesId);
+                    if ($species) {
+                        delete_genetic_species($pdo, $speciesId);
+                        flash('success', 'Art entfernt.');
+                    }
+                }
+                redirect('admin/genetics');
+            } elseif ($formType === 'delete_gene') {
+                $speciesSlugParam = $_POST['species_slug'] ?? null;
+                $redirectParams = $speciesSlugParam ? ['species' => $speciesSlugParam] : [];
+                require_csrf_token('admin/genetics', $redirectParams);
+                $geneId = (int)($_POST['gene_id'] ?? 0);
+                if ($geneId) {
+                    $gene = get_genetic_gene($pdo, $geneId);
+                    if ($gene) {
+                        delete_genetic_gene($pdo, $geneId);
+                        $species = get_genetic_species_by_id($pdo, (int)$gene['species_id']);
+                        $slug = $species['slug'] ?? $speciesSlugParam;
+                        flash('success', 'Gen entfernt.');
+                        redirect('admin/genetics', $slug ? ['species' => $slug] : []);
+                    }
+                }
+                redirect('admin/genetics', $redirectParams);
             }
         }
-
-        if (isset($_GET['delete_species'])) {
-            $species = get_genetic_species_by_id($pdo, (int)$_GET['delete_species']);
-            if ($species) {
-                delete_genetic_species($pdo, (int)$species['id']);
-                flash('success', 'Art entfernt.');
-            }
-            redirect('admin/genetics');
-        }
-
-        if (isset($_GET['delete_gene'])) {
-            $gene = get_genetic_gene($pdo, (int)$_GET['delete_gene']);
-            if ($gene) {
-                delete_genetic_gene($pdo, (int)$gene['id']);
-                $species = get_genetic_species_by_id($pdo, (int)$gene['species_id']);
-                flash('success', 'Gen entfernt.');
-                $slug = $species['slug'] ?? null;
-                redirect('admin/genetics', $slug ? ['species' => $slug] : []);
-            }
-            redirect('admin/genetics');
-        }
-
         $settings = get_all_settings($pdo);
         $speciesList = get_genetic_species($pdo);
         $selectedSlug = $_GET['species'] ?? $_POST['species_slug'] ?? ($speciesList[0]['slug'] ?? null);
@@ -731,6 +794,18 @@ switch ($route) {
             redirect('admin/dashboard');
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (($_POST['action'] ?? '') === 'delete_user') {
+                require_csrf_token('admin/users');
+                $userId = (int)($_POST['user_id'] ?? 0);
+                if ($userId && $userId !== (int)current_user()['id']) {
+                    delete_user($pdo, $userId);
+                    flash('success', 'Benutzer gelöscht.');
+                }
+                redirect('admin/users');
+            }
+
+            $redirectParams = !empty($_POST['id']) ? ['edit' => (int)$_POST['id']] : [];
+            require_csrf_token('admin/users', $redirectParams);
             $data = $_POST;
             if (!empty($data['id'])) {
                 update_user($pdo, (int)$data['id'], $data);
@@ -739,11 +814,6 @@ switch ($route) {
                 create_user($pdo, $data);
                 flash('success', 'Benutzer erstellt.');
             }
-            redirect('admin/users');
-        }
-        if (isset($_GET['delete'])) {
-            delete_user($pdo, (int)$_GET['delete']);
-            flash('success', 'Benutzer gelöscht.');
             redirect('admin/users');
         }
         $users = get_users($pdo);
