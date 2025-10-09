@@ -1,0 +1,8 @@
+storage/*.sqlite
+storage/*.db
+uploads/*
+!uploads/.gitignore
+.DS_Store
+.env
+.idea/
+.vscode/
