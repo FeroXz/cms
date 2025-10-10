@@ -6,7 +6,7 @@ function ensure_default_settings(PDO $pdo): void
         'site_tagline' => 'Spezialisierte Pflege für Bartagamen und Hakennasennattern',
         'hero_intro' => 'Entdecke unsere Leidenschaft für verantwortungsvolle Haltung und Zucht.',
         'adoption_intro' => 'Diese Tiere suchen ein liebevolles Zuhause. Kontaktiere uns für mehr Informationen.',
-        'footer_text' => '© ' . date('Y') . ' FeroxZ CMS — Version 3.0',
+        'footer_text' => '© ' . date('Y') . ' FeroxZ CMS — Version 3.5',
         'contact_email' => 'info@example.com',
         'active_theme' => 'aurora',
     ];
@@ -18,6 +18,17 @@ function ensure_default_settings(PDO $pdo): void
     foreach ($defaults as $key => $value) {
         $stmt = $pdo->prepare('INSERT OR IGNORE INTO settings(key, value) VALUES (:key, :value)');
         $stmt->execute(['key' => $key, 'value' => $value]);
+    }
+
+    $currentFooter = get_setting($pdo, 'footer_text', '');
+    if (strpos($currentFooter, 'Version 3.5') === false) {
+        if (strpos($currentFooter, 'Version 3.4') !== false) {
+            set_setting($pdo, 'footer_text', str_replace('Version 3.4', 'Version 3.5', $currentFooter));
+        } elseif (strpos($currentFooter, 'Version 3.3') !== false) {
+            set_setting($pdo, 'footer_text', str_replace('Version 3.3', 'Version 3.5', $currentFooter));
+        } elseif (strpos($currentFooter, 'Version 3.2') !== false) {
+            set_setting($pdo, 'footer_text', str_replace('Version 3.2', 'Version 3.5', $currentFooter));
+        }
     }
 }
 
