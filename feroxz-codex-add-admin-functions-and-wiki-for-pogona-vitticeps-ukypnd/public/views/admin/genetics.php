@@ -123,6 +123,9 @@
                                     <td>
                                         <strong><?= htmlspecialchars($gene['name']) ?></strong><br>
                                         <small class="text-muted">Slug: <?= htmlspecialchars($gene['slug']) ?></small>
+                                        <?php if (!empty($gene['is_reference'])): ?>
+                                            <span class="badge badge-pattern" style="margin-left:0.5rem;">Referenz</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td><?= htmlspecialchars($gene['shorthand'] ?? '') ?></td>
                                     <td>
