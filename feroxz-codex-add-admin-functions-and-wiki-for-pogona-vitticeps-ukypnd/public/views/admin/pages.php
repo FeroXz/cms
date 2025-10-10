@@ -23,7 +23,7 @@
         'parent_id' => $hasPagePost ? ($_POST['parent_id'] ?? '') : (($editPage['parent_id'] ?? '') !== '' ? (string)$editPage['parent_id'] : ''),
     ];
 ?>
-<div class="grid" style="grid-template-columns:2fr 1fr;gap:2rem;align-items:start;">
+<div class="admin-two-column">
     <div class="card">
         <h2>Bestehende Seiten</h2>
         <table class="table">

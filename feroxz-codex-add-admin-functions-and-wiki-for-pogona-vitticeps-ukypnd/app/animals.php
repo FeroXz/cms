@@ -1,12 +1,14 @@
 <?php
 function create_animal(PDO $pdo, array $data): void
 {
-    $stmt = $pdo->prepare('INSERT INTO animals(name, species, age, genetics, origin, special_notes, description, image_path, owner_id, is_private, is_showcased, is_piebald) VALUES (:name, :species, :age, :genetics, :origin, :special_notes, :description, :image_path, :owner_id, :is_private, :is_showcased, :is_piebald)');
+    $stmt = $pdo->prepare('INSERT INTO animals(name, species, species_slug, age, genetics, genetics_profile, origin, special_notes, description, image_path, owner_id, is_private, is_showcased, is_piebald) VALUES (:name, :species, :species_slug, :age, :genetics, :genetics_profile, :origin, :special_notes, :description, :image_path, :owner_id, :is_private, :is_showcased, :is_piebald)');
     $stmt->execute([
         'name' => trim($data['name'] ?? ''),
         'species' => trim($data['species'] ?? ''),
+        'species_slug' => $data['species_slug'] ?? null,
         'age' => $data['age'] ?? null,
         'genetics' => $data['genetics'] ?? null,
+        'genetics_profile' => $data['genetics_profile'] ?? null,
         'origin' => $data['origin'] ?? null,
         'special_notes' => $data['special_notes'] ?? null,
         'description' => $data['description'] ?? null,
@@ -20,12 +22,14 @@ function create_animal(PDO $pdo, array $data): void
 
 function update_animal(PDO $pdo, int $id, array $data): void
 {
-    $stmt = $pdo->prepare('UPDATE animals SET name = :name, species = :species, age = :age, genetics = :genetics, origin = :origin, special_notes = :special_notes, description = :description, image_path = :image_path, owner_id = :owner_id, is_private = :is_private, is_showcased = :is_showcased, is_piebald = :is_piebald WHERE id = :id');
+    $stmt = $pdo->prepare('UPDATE animals SET name = :name, species = :species, species_slug = :species_slug, age = :age, genetics = :genetics, genetics_profile = :genetics_profile, origin = :origin, special_notes = :special_notes, description = :description, image_path = :image_path, owner_id = :owner_id, is_private = :is_private, is_showcased = :is_showcased, is_piebald = :is_piebald WHERE id = :id');
     $stmt->execute([
         'name' => trim($data['name'] ?? ''),
         'species' => trim($data['species'] ?? ''),
+        'species_slug' => $data['species_slug'] ?? null,
         'age' => $data['age'] ?? null,
         'genetics' => $data['genetics'] ?? null,
+        'genetics_profile' => $data['genetics_profile'] ?? null,
         'origin' => $data['origin'] ?? null,
         'special_notes' => $data['special_notes'] ?? null,
         'description' => $data['description'] ?? null,

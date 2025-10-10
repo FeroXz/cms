@@ -9,3 +9,6 @@
 - [x] Neuen Admin-Bereich „Texte“ eingeführt, um sämtliche statischen Inhalte der Seiten anzupassen.
 - [x] Zweites, reptilieninspiriertes „Serpent Flux“-Theme implementiert und per Einstellung umschaltbar gemacht.
 - [x] Admin-Schnellnavigation stapelt Einträge bis zum Desktop zuverlässig für eine echte Mobile-Ansicht.
+- [x] Admin-Formulare für Tiere & Adoptionen nutzen eine gemeinsame Artenliste inklusive Genetik-Auswahl je Spezies.
+- [x] Tieralter lassen sich per Jahr/Monat/Tag-Auswahl mit optionalen Angaben statt Freitext pflegen.
+- [x] Zweispaltige Admin-Bereiche reagieren mobilfreundlich und stapeln Inhalte automatisch untereinander.

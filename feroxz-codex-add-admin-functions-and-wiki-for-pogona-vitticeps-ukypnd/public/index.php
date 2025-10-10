@@ -349,6 +349,14 @@ switch ($route) {
             redirect('admin/dashboard');
         }
         $prefillAnimal = null;
+        $speciesList = get_genetic_species($pdo);
+        $speciesBySlug = [];
+        $speciesGenes = [];
+        foreach ($speciesList as $speciesEntry) {
+            $speciesBySlug[$speciesEntry['slug']] = $speciesEntry;
+            $speciesGenes[$speciesEntry['slug']] = get_genetic_genes($pdo, (int)$speciesEntry['id']);
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (($_POST['action'] ?? '') === 'delete_animal') {
                 require_csrf_token('admin/animals');
@@ -362,20 +370,82 @@ switch ($route) {
 
             $redirectParams = !empty($_POST['id']) ? ['edit' => (int)$_POST['id']] : [];
             require_csrf_token('admin/animals', $redirectParams);
-            $data = $_POST;
-            $data['name'] = trim($data['name'] ?? '');
-            $data['species'] = trim($data['species'] ?? '');
-            $data['age'] = trim($data['age'] ?? '');
-            $data['origin'] = trim($data['origin'] ?? '');
-            $data['special_notes'] = $data['special_notes'] ?? null;
-            $data['description'] = $data['description'] ?? null;
-            $data['genetics'] = $data['genetics'] ?? null;
-            $data['is_private'] = isset($_POST['is_private']);
-            $data['is_showcased'] = isset($_POST['is_showcased']);
-            $data['is_piebald'] = isset($_POST['is_piebald']);
-            if ($data['name'] === '' || $data['species'] === '') {
-                flash('error', 'Bitte geben Sie sowohl einen Tiernamen als auch die Artbezeichnung an.');
-                $prefillAnimal = $data;
+
+            $ageParts = [
+                'year' => $_POST['age_year'] ?? '',
+                'month' => $_POST['age_month'] ?? '',
+                'day' => $_POST['age_day'] ?? '',
+            ];
+            [$normalizedAge, $ageError] = normalize_partial_date_input($ageParts);
+
+            $speciesSlug = trim((string)($_POST['species_slug'] ?? ''));
+            $selectedSpecies = $speciesSlug !== '' ? ($speciesBySlug[$speciesSlug] ?? null) : null;
+
+            $geneStates = [];
+            if (isset($_POST['gene_states']) && is_array($_POST['gene_states'])) {
+                foreach ($_POST['gene_states'] as $slug => $state) {
+                    if (!is_string($slug) || !is_string($state)) {
+                        continue;
+                    }
+                    $geneStates[$slug] = trim($state);
+                }
+            }
+
+            $data = [
+                'id' => $_POST['id'] ?? null,
+                'name' => trim((string)($_POST['name'] ?? '')),
+                'origin' => trim((string)($_POST['origin'] ?? '')),
+                'special_notes' => $_POST['special_notes'] ?? null,
+                'description' => $_POST['description'] ?? null,
+                'owner_id' => $_POST['owner_id'] ?? null,
+                'image_path' => $_POST['image_path'] ?? null,
+                'is_private' => isset($_POST['is_private']),
+                'is_showcased' => isset($_POST['is_showcased']),
+                'is_piebald' => isset($_POST['is_piebald']),
+            ];
+
+            $errorMessage = null;
+            if ($data['name'] === '') {
+                $errorMessage = 'Bitte vergeben Sie einen Namen für das Tier.';
+            } elseif (!$selectedSpecies) {
+                $errorMessage = 'Bitte wählen Sie eine gültige Art aus der Liste.';
+            } elseif ($ageError) {
+                $errorMessage = $ageError;
+            }
+
+            $data['species'] = $selectedSpecies['name'] ?? '';
+            $data['species_slug'] = $selectedSpecies['slug'] ?? null;
+            $data['age'] = $normalizedAge;
+
+            $geneSummary = [];
+            $geneticsProfile = [];
+            if ($selectedSpecies) {
+                $availableGenes = $speciesGenes[$selectedSpecies['slug']] ?? [];
+                $geneLookup = [];
+                foreach ($availableGenes as $gene) {
+                    $geneLookup[$gene['slug']] = $gene;
+                }
+                foreach ($geneStates as $slug => $state) {
+                    if (!isset($geneLookup[$slug])) {
+                        continue;
+                    }
+                    $label = build_gene_state_label($geneLookup[$slug], $state);
+                    if ($label) {
+                        $geneSummary[] = $label;
+                        $geneticsProfile[$slug] = $state;
+                    }
+                }
+            }
+            $data['genetics'] = $geneSummary ? implode(', ', $geneSummary) : null;
+            $data['genetics_profile'] = $geneticsProfile ? json_encode($geneticsProfile, JSON_UNESCAPED_UNICODE) : null;
+
+            if ($errorMessage !== null) {
+                flash('error', $errorMessage);
+                $prefillAnimal = array_merge($data, [
+                    'species_slug' => $speciesSlug,
+                    'age_parts' => $ageParts,
+                    'gene_states' => $geneticsProfile ? $geneticsProfile : $geneStates,
+                ]);
             } else {
                 if (!empty($_FILES['image']['name'])) {
                     $upload = handle_upload($_FILES['image']);
@@ -400,9 +470,26 @@ switch ($route) {
         if (!$editAnimal && isset($_GET['edit'])) {
             $editAnimal = get_animal($pdo, (int)$_GET['edit']);
         }
+        if ($editAnimal) {
+            if (empty($editAnimal['species_slug']) && !empty($editAnimal['species'])) {
+                foreach ($speciesList as $speciesEntry) {
+                    if (strcasecmp($speciesEntry['name'], $editAnimal['species']) === 0) {
+                        $editAnimal['species_slug'] = $speciesEntry['slug'];
+                        break;
+                    }
+                }
+            }
+            $editAnimal['age_parts'] = parse_partial_date($editAnimal['age'] ?? null);
+            if (!empty($editAnimal['genetics_profile'])) {
+                $decodedProfile = json_decode($editAnimal['genetics_profile'], true);
+                if (is_array($decodedProfile)) {
+                    $editAnimal['gene_states'] = $decodedProfile;
+                }
+            }
+        }
         $flashSuccess = flash('success');
         $flashError = flash('error');
-        view('admin/animals', compact('animals', 'users', 'editAnimal', 'flashSuccess', 'flashError', 'settings'));
+        view('admin/animals', compact('animals', 'users', 'editAnimal', 'flashSuccess', 'flashError', 'settings', 'speciesList', 'speciesGenes'));
         break;
 
     case 'admin/breeding':
@@ -538,6 +625,14 @@ switch ($route) {
             flash('error', 'Keine Berechtigung.');
             redirect('admin/dashboard');
         }
+        $speciesList = get_genetic_species($pdo);
+        $speciesBySlug = [];
+        $speciesGenes = [];
+        foreach ($speciesList as $speciesEntry) {
+            $speciesBySlug[$speciesEntry['slug']] = $speciesEntry;
+            $speciesGenes[$speciesEntry['slug']] = get_genetic_genes($pdo, (int)$speciesEntry['id']);
+        }
+        $prefillListing = null;
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (($_POST['action'] ?? '') === 'delete_listing') {
                 require_csrf_token('admin/adoption');
@@ -551,31 +646,111 @@ switch ($route) {
 
             $redirectParams = !empty($_POST['id']) ? ['edit' => (int)$_POST['id']] : [];
             require_csrf_token('admin/adoption', $redirectParams);
-            $data = $_POST;
-            if (!empty($_FILES['image']['name'])) {
-                $upload = handle_upload($_FILES['image']);
-                if ($upload) {
-                    $data['image_path'] = $upload;
+            $speciesSlug = trim((string)($_POST['species_slug'] ?? ''));
+            $selectedSpecies = $speciesSlug !== '' ? ($speciesBySlug[$speciesSlug] ?? null) : null;
+
+            $geneStates = [];
+            if (isset($_POST['gene_states']) && is_array($_POST['gene_states'])) {
+                foreach ($_POST['gene_states'] as $slug => $state) {
+                    if (!is_string($slug) || !is_string($state)) {
+                        continue;
+                    }
+                    $geneStates[$slug] = trim($state);
                 }
             }
-            if (!empty($data['id'])) {
-                update_listing($pdo, (int)$data['id'], $data);
-                flash('success', 'Abgabeintrag aktualisiert.');
-            } else {
-                create_listing($pdo, $data);
-                flash('success', 'Abgabeintrag erstellt.');
+
+            $data = [
+                'id' => $_POST['id'] ?? null,
+                'title' => trim((string)($_POST['title'] ?? '')),
+                'animal_id' => $_POST['animal_id'] ?? null,
+                'price' => $_POST['price'] ?? null,
+                'description' => $_POST['description'] ?? null,
+                'status' => $_POST['status'] ?? 'available',
+                'contact_email' => $_POST['contact_email'] ?? null,
+                'image_path' => $_POST['image_path'] ?? null,
+            ];
+
+            $errorMessage = null;
+            if ($data['title'] === '') {
+                $errorMessage = 'Bitte gib dem Inserat einen aussagekräftigen Titel.';
+            } elseif (!empty($speciesList) && !$selectedSpecies) {
+                $errorMessage = 'Bitte wähle eine Art aus der Liste.';
             }
-            redirect('admin/adoption');
+
+            $data['species'] = $selectedSpecies['name'] ?? null;
+            $data['species_slug'] = $selectedSpecies['slug'] ?? null;
+
+            $geneSummary = [];
+            $geneticsProfile = [];
+            if ($selectedSpecies) {
+                $availableGenes = $speciesGenes[$selectedSpecies['slug']] ?? [];
+                $geneLookup = [];
+                foreach ($availableGenes as $gene) {
+                    $geneLookup[$gene['slug']] = $gene;
+                }
+                foreach ($geneStates as $slug => $state) {
+                    if (!isset($geneLookup[$slug])) {
+                        continue;
+                    }
+                    $label = build_gene_state_label($geneLookup[$slug], $state);
+                    if ($label) {
+                        $geneSummary[] = $label;
+                        $geneticsProfile[$slug] = $state;
+                    }
+                }
+            }
+            $data['genetics'] = $geneSummary ? implode(', ', $geneSummary) : null;
+            $data['genetics_profile'] = $geneticsProfile ? json_encode($geneticsProfile, JSON_UNESCAPED_UNICODE) : null;
+
+            if ($errorMessage !== null) {
+                flash('error', $errorMessage);
+                $prefillListing = array_merge($data, [
+                    'species_slug' => $speciesSlug,
+                    'gene_states' => $geneticsProfile ? $geneticsProfile : $geneStates,
+                ]);
+            } else {
+                if (!empty($_FILES['image']['name'])) {
+                    $upload = handle_upload($_FILES['image']);
+                    if ($upload) {
+                        $data['image_path'] = $upload;
+                    }
+                }
+                if (!empty($data['id'])) {
+                    update_listing($pdo, (int)$data['id'], $data);
+                    flash('success', 'Abgabeintrag aktualisiert.');
+                } else {
+                    create_listing($pdo, $data);
+                    flash('success', 'Abgabeintrag erstellt.');
+                }
+                redirect('admin/adoption');
+            }
         }
         $listings = get_listings($pdo);
         $animals = get_animals($pdo);
         $settings = get_all_settings($pdo);
-        $editListing = null;
-        if (isset($_GET['edit'])) {
+        $editListing = $prefillListing;
+        if (!$editListing && isset($_GET['edit'])) {
             $editListing = get_listing($pdo, (int)$_GET['edit']);
         }
+        if ($editListing) {
+            if (empty($editListing['species_slug']) && !empty($editListing['species'])) {
+                foreach ($speciesList as $speciesEntry) {
+                    if (strcasecmp($speciesEntry['name'], $editListing['species']) === 0) {
+                        $editListing['species_slug'] = $speciesEntry['slug'];
+                        break;
+                    }
+                }
+            }
+            if (!empty($editListing['genetics_profile'])) {
+                $decodedProfile = json_decode($editListing['genetics_profile'], true);
+                if (is_array($decodedProfile)) {
+                    $editListing['gene_states'] = $decodedProfile;
+                }
+            }
+        }
         $flashSuccess = flash('success');
-        view('admin/adoption', compact('listings', 'animals', 'editListing', 'flashSuccess', 'settings'));
+        $flashError = flash('error');
+        view('admin/adoption', compact('listings', 'animals', 'editListing', 'flashSuccess', 'flashError', 'settings', 'speciesList', 'speciesGenes'));
         break;
 
     case 'admin/care':

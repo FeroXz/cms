@@ -8,7 +8,7 @@
 <?php if ($flashError): ?>
     <div class="alert alert-error" role="alert" aria-live="assertive"><?= htmlspecialchars($flashError) ?></div>
 <?php endif; ?>
-<div class="grid" style="grid-template-columns:2fr 1fr;gap:2rem;align-items:start;">
+<div class="admin-two-column">
     <div class="card">
         <h2>Artikelübersicht</h2>
         <table class="table">

@@ -192,6 +192,126 @@ function normalize_flag($value): int
     return $normalized ? 1 : 0;
 }
 
+function parse_partial_date(?string $value): array
+{
+    if (!$value) {
+        return ['year' => '', 'month' => '', 'day' => ''];
+    }
+
+    $parts = explode('-', $value);
+    $year = $parts[0] ?? '';
+    $month = $parts[1] ?? '';
+    $day = $parts[2] ?? '';
+
+    return [
+        'year' => ctype_digit($year) && strlen($year) === 4 ? $year : '',
+        'month' => ctype_digit($month ?? '') && strlen($month) === 2 ? $month : '',
+        'day' => ctype_digit($day ?? '') && strlen($day) === 2 ? $day : '',
+    ];
+}
+
+function normalize_partial_date_input(array $input): array
+{
+    $year = trim((string)($input['year'] ?? ''));
+    $month = trim((string)($input['month'] ?? ''));
+    $day = trim((string)($input['day'] ?? ''));
+
+    if ($year === '' && ($month !== '' || $day !== '')) {
+        return [null, 'Bitte zunächst ein Jahr auswählen, bevor Monat oder Tag gesetzt werden.'];
+    }
+
+    if ($year === '') {
+        return [null, null];
+    }
+
+    if ($month === '' && $day !== '') {
+        return [null, 'Bitte wählen Sie einen Monat, bevor Sie einen Tag festlegen.'];
+    }
+
+    $yearInt = (int)$year;
+    if ($yearInt < 1900 || $yearInt > (int)date('Y') + 1) {
+        return [null, 'Das ausgewählte Jahr liegt außerhalb des zulässigen Bereichs.'];
+    }
+
+    $parts = [$year];
+
+    if ($month !== '') {
+        $monthInt = (int)$month;
+        if ($monthInt < 1 || $monthInt > 12) {
+            return [null, 'Der ausgewählte Monat ist ungültig.'];
+        }
+        $parts[] = str_pad((string)$monthInt, 2, '0', STR_PAD_LEFT);
+
+        if ($day !== '') {
+            $dayInt = (int)$day;
+            $maxDay = (int)date('t', strtotime(sprintf('%04d-%02d-01', $yearInt, $monthInt)));
+            if ($dayInt < 1 || $dayInt > $maxDay) {
+                return [null, 'Der ausgewählte Tag passt nicht zum gewählten Monat.'];
+            }
+            $parts[] = str_pad((string)$dayInt, 2, '0', STR_PAD_LEFT);
+        }
+    }
+
+    return [implode('-', $parts), null];
+}
+
+function format_partial_date(?string $value): ?string
+{
+    if (!$value) {
+        return null;
+    }
+
+    $parts = parse_partial_date($value);
+    if ($parts['year'] === '') {
+        return null;
+    }
+
+    $year = $parts['year'];
+    if ($parts['month'] === '') {
+        return $year;
+    }
+
+    $monthNames = [
+        1 => 'Januar',
+        2 => 'Februar',
+        3 => 'März',
+        4 => 'April',
+        5 => 'Mai',
+        6 => 'Juni',
+        7 => 'Juli',
+        8 => 'August',
+        9 => 'September',
+        10 => 'Oktober',
+        11 => 'November',
+        12 => 'Dezember',
+    ];
+    $monthName = $monthNames[(int)$parts['month']] ?? null;
+    if ($parts['day'] === '') {
+        return $monthName ? sprintf('%s %s', $monthName, $year) : $year;
+    }
+
+    return sprintf('%02d. %s %s', (int)$parts['day'], $monthName ?: '', $year);
+}
+
+function build_gene_state_label(array $gene, string $state): ?string
+{
+    $state = trim($state);
+    if ($state === '' || !in_array($state, ['normal', 'heterozygous', 'homozygous'], true)) {
+        return null;
+    }
+
+    $name = $gene['name'] ?? '';
+    if ($state === 'heterozygous') {
+        return $gene['heterozygous_label'] ?: ($name ? $name . ' (het)' : null);
+    }
+
+    if ($state === 'homozygous') {
+        return $gene['homozygous_label'] ?: ($name ? $name . ' (hom)' : null);
+    }
+
+    return $gene['normal_label'] ?: ($name ?: null);
+}
+
 function get_setting(PDO $pdo, string $key, string $default = ''): string
 {
     $stmt = $pdo->prepare('SELECT value FROM settings WHERE key = :key');

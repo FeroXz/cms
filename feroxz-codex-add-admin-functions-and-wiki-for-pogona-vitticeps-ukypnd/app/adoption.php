@@ -9,12 +9,14 @@ function normalize_listing_status(?string $status): string
 
 function create_listing(PDO $pdo, array $data): void
 {
-    $stmt = $pdo->prepare('INSERT INTO adoption_listings(animal_id, title, species, genetics, price, description, image_path, status, contact_email) VALUES (:animal_id, :title, :species, :genetics, :price, :description, :image_path, :status, :contact_email)');
+    $stmt = $pdo->prepare('INSERT INTO adoption_listings(animal_id, title, species, species_slug, genetics, genetics_profile, price, description, image_path, status, contact_email) VALUES (:animal_id, :title, :species, :species_slug, :genetics, :genetics_profile, :price, :description, :image_path, :status, :contact_email)');
     $stmt->execute([
         'animal_id' => normalize_nullable_id($data['animal_id'] ?? null),
         'title' => trim($data['title'] ?? ''),
         'species' => trim($data['species'] ?? '') ?: null,
+        'species_slug' => $data['species_slug'] ?? null,
         'genetics' => trim($data['genetics'] ?? '') ?: null,
+        'genetics_profile' => $data['genetics_profile'] ?? null,
         'price' => ($price = trim((string)($data['price'] ?? ''))) === '' ? null : $price,
         'description' => $data['description'] ?? null,
         'image_path' => $data['image_path'] ?? null,
@@ -25,12 +27,14 @@ function create_listing(PDO $pdo, array $data): void
 
 function update_listing(PDO $pdo, int $id, array $data): void
 {
-    $stmt = $pdo->prepare('UPDATE adoption_listings SET animal_id = :animal_id, title = :title, species = :species, genetics = :genetics, price = :price, description = :description, image_path = :image_path, status = :status, contact_email = :contact_email WHERE id = :id');
+    $stmt = $pdo->prepare('UPDATE adoption_listings SET animal_id = :animal_id, title = :title, species = :species, species_slug = :species_slug, genetics = :genetics, genetics_profile = :genetics_profile, price = :price, description = :description, image_path = :image_path, status = :status, contact_email = :contact_email WHERE id = :id');
     $stmt->execute([
         'animal_id' => normalize_nullable_id($data['animal_id'] ?? null),
         'title' => trim($data['title'] ?? ''),
         'species' => trim($data['species'] ?? '') ?: null,
+        'species_slug' => $data['species_slug'] ?? null,
         'genetics' => trim($data['genetics'] ?? '') ?: null,
+        'genetics_profile' => $data['genetics_profile'] ?? null,
         'price' => ($price = trim((string)($data['price'] ?? ''))) === '' ? null : $price,
         'description' => $data['description'] ?? null,
         'image_path' => $data['image_path'] ?? null,

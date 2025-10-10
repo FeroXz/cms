@@ -40,8 +40,10 @@ function initialize_database(PDO $pdo): void
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         species TEXT NOT NULL,
+        species_slug TEXT,
         age TEXT,
         genetics TEXT,
+        genetics_profile TEXT,
         origin TEXT,
         special_notes TEXT,
         description TEXT,
@@ -55,15 +57,15 @@ function initialize_database(PDO $pdo): void
     )');
 
     $animalColumns = $pdo->query('PRAGMA table_info(animals)')->fetchAll();
-    $hasPiebald = false;
-    foreach ($animalColumns as $column) {
-        if (($column['name'] ?? '') === 'is_piebald') {
-            $hasPiebald = true;
-            break;
-        }
-    }
-    if (!$hasPiebald) {
+    $animalColumnNames = array_column($animalColumns, 'name');
+    if (!in_array('is_piebald', $animalColumnNames, true)) {
         $pdo->exec('ALTER TABLE animals ADD COLUMN is_piebald INTEGER NOT NULL DEFAULT 0');
+    }
+    if (!in_array('species_slug', $animalColumnNames, true)) {
+        $pdo->exec('ALTER TABLE animals ADD COLUMN species_slug TEXT');
+    }
+    if (!in_array('genetics_profile', $animalColumnNames, true)) {
+        $pdo->exec('ALTER TABLE animals ADD COLUMN genetics_profile TEXT');
     }
 
     $pdo->exec('CREATE TABLE IF NOT EXISTS adoption_listings (
@@ -71,7 +73,9 @@ function initialize_database(PDO $pdo): void
         animal_id INTEGER,
         title TEXT NOT NULL,
         species TEXT,
+        species_slug TEXT,
         genetics TEXT,
+        genetics_profile TEXT,
         price TEXT,
         description TEXT,
         image_path TEXT,
@@ -80,6 +84,15 @@ function initialize_database(PDO $pdo): void
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(animal_id) REFERENCES animals(id)
     )');
+
+    $adoptionColumns = $pdo->query('PRAGMA table_info(adoption_listings)')->fetchAll();
+    $adoptionColumnNames = array_column($adoptionColumns, 'name');
+    if (!in_array('species_slug', $adoptionColumnNames, true)) {
+        $pdo->exec('ALTER TABLE adoption_listings ADD COLUMN species_slug TEXT');
+    }
+    if (!in_array('genetics_profile', $adoptionColumnNames, true)) {
+        $pdo->exec('ALTER TABLE adoption_listings ADD COLUMN genetics_profile TEXT');
+    }
 
     $pdo->exec('CREATE TABLE IF NOT EXISTS adoption_inquiries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

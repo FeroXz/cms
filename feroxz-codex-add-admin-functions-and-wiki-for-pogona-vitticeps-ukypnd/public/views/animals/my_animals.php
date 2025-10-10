@@ -22,8 +22,9 @@
                         <?php endif; ?>
                     </h3>
                     <p class="text-sm text-slate-300"><?= htmlspecialchars($animal['species']) ?></p>
-                    <?php if (!empty($animal['age'])): ?>
-                        <p class="mt-2 text-sm text-slate-200"><strong>Alter:</strong> <?= htmlspecialchars($animal['age']) ?></p>
+                    <?php $displayAge = format_partial_date($animal['age'] ?? null) ?? ($animal['age'] ?? null); ?>
+                    <?php if (!empty($displayAge)): ?>
+                        <p class="mt-2 text-sm text-slate-200"><strong>Alter:</strong> <?= htmlspecialchars($displayAge) ?></p>
                     <?php endif; ?>
                     <?php if (!empty($animal['genetics'])): ?>
                         <p class="mt-2 rounded-xl border border-brand-400/40 bg-brand-500/10 px-3 py-2 text-sm text-brand-100">
