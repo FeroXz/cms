@@ -14,6 +14,8 @@ require_once __DIR__ . '/news.php';
 require_once __DIR__ . '/breeding.php';
 require_once __DIR__ . '/careguide.php';
 require_once __DIR__ . '/genetics.php';
+require_once __DIR__ . '/gallery.php';
+require_once __DIR__ . '/demo.php';
 
 $pdo = get_database_connection();
 initialize_database($pdo);
@@ -21,3 +23,5 @@ ensure_default_admin($pdo);
 ensure_default_settings($pdo);
 ensure_default_care_articles($pdo);
 ensure_default_genetics($pdo);
+ensure_default_gallery_samples($pdo);
+ensure_demo_content($pdo);
