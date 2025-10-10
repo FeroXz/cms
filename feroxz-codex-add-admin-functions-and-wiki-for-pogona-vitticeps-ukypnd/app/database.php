@@ -199,10 +199,17 @@ function initialize_database(PDO $pdo): void
         normal_label TEXT,
         heterozygous_label TEXT,
         homozygous_label TEXT,
+        is_reference INTEGER NOT NULL DEFAULT 0,
         display_order INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(species_id) REFERENCES genetic_species(id) ON DELETE CASCADE,
         UNIQUE(species_id, slug)
     )');
+
+    $geneColumns = $pdo->query('PRAGMA table_info(genetic_genes)')->fetchAll();
+    $geneColumnNames = array_column($geneColumns, 'name');
+    if (!in_array('is_reference', $geneColumnNames, true)) {
+        $pdo->exec('ALTER TABLE genetic_genes ADD COLUMN is_reference INTEGER NOT NULL DEFAULT 0');
+    }
 }

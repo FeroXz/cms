@@ -153,20 +153,23 @@ switch ($route) {
             $selectedSlug = $speciesList[0]['slug'];
         }
         $genes = $selectedSpecies ? get_genetic_genes($pdo, (int)$selectedSpecies['id']) : [];
+        $activeGenes = array_values(array_filter($genes, static fn($gene) => empty($gene['is_reference'])));
+        $referenceGenes = array_values(array_filter($genes, static fn($gene) => !empty($gene['is_reference'])));
         $parentSelections = [
             'parent1' => $_POST['parent1'] ?? [],
             'parent2' => $_POST['parent2'] ?? [],
         ];
         $results = null;
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedSpecies && !empty($genes)) {
-            $results = calculate_genetic_outcomes($genes, $parentSelections['parent1'], $parentSelections['parent2']);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedSpecies && !empty($activeGenes)) {
+            $results = calculate_genetic_outcomes($activeGenes, $parentSelections['parent1'], $parentSelections['parent2']);
         }
         view('genetics/index', [
             'settings' => $settings,
             'speciesList' => $speciesList,
             'selectedSpecies' => $selectedSpecies,
             'selectedSpeciesSlug' => $selectedSlug,
-            'genes' => $genes,
+            'genes' => $activeGenes,
+            'referenceGenes' => $referenceGenes,
             'parentSelections' => $parentSelections,
             'results' => $results,
         ]);
@@ -354,7 +357,8 @@ switch ($route) {
         $speciesGenes = [];
         foreach ($speciesList as $speciesEntry) {
             $speciesBySlug[$speciesEntry['slug']] = $speciesEntry;
-            $speciesGenes[$speciesEntry['slug']] = get_genetic_genes($pdo, (int)$speciesEntry['id']);
+            $speciesGeneList = get_genetic_genes($pdo, (int)$speciesEntry['id']);
+            $speciesGenes[$speciesEntry['slug']] = array_values(array_filter($speciesGeneList, static fn($gene) => empty($gene['is_reference'])));
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -630,7 +634,8 @@ switch ($route) {
         $speciesGenes = [];
         foreach ($speciesList as $speciesEntry) {
             $speciesBySlug[$speciesEntry['slug']] = $speciesEntry;
-            $speciesGenes[$speciesEntry['slug']] = get_genetic_genes($pdo, (int)$speciesEntry['id']);
+            $speciesGeneList = get_genetic_genes($pdo, (int)$speciesEntry['id']);
+            $speciesGenes[$speciesEntry['slug']] = array_values(array_filter($speciesGeneList, static fn($gene) => empty($gene['is_reference'])));
         }
         $prefillListing = null;
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {

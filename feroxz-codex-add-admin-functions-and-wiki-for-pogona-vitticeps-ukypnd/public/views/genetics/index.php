@@ -135,6 +135,40 @@
                 <?php endforeach; ?>
             </div>
         </section>
+        <?php if (!empty($referenceGenes ?? [])): ?>
+            <section class="gene-reference" style="margin-top:2.5rem;">
+                <h2>Kombinations-Referenzen</h2>
+                <p class="text-muted" style="margin-bottom:1rem;line-height:1.5;">
+                    Diese Einträge dokumentieren bestätigte Morph-Kombinationen. Für Berechnungen im Genetik-Rechner
+                    bitte die jeweiligen Basismorphe auswählen – die Karten dienen ausschließlich als Nachschlagewerk.
+                </p>
+                <div class="grid cards">
+                    <?php foreach ($referenceGenes as $gene): ?>
+                        <article class="card gene-reference__card">
+                            <header class="gene-reference__header">
+                                <div>
+                                    <h3><?= htmlspecialchars($gene['name']) ?></h3>
+                                    <?php if (!empty($gene['shorthand'])): ?>
+                                        <span class="badge">Kürzel: <?= htmlspecialchars($gene['shorthand']) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                <span class="badge badge-pattern">Referenz</span>
+                            </header>
+                            <dl class="gene-reference__states">
+                                <div><dt>Basis</dt><dd><?= htmlspecialchars($gene['normal_label']) ?></dd></div>
+                                <div><dt>Teil-Kombi</dt><dd><?= htmlspecialchars($gene['heterozygous_label']) ?></dd></div>
+                                <div><dt>Komplett</dt><dd><?= htmlspecialchars($gene['homozygous_label']) ?></dd></div>
+                            </dl>
+                            <?php if (!empty($gene['description'])): ?>
+                                <p class="text-muted" style="line-height:1.5;">
+                                    <?= htmlspecialchars($gene['description']) ?>
+                                </p>
+                            <?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endif; ?>
         <script>
             window.GENETIC_GENE_DATA = <?= json_encode($geneStatePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
             window.GENETIC_PARENT_SELECTIONS = <?= json_encode($parentSelections, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
