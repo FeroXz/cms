@@ -212,28 +212,54 @@ function delete_genetic_gene(PDO $pdo, int $id): void
     $stmt->execute(['id' => $id]);
 }
 
+function normalize_gene_sample(array $sample, int $speciesId): array
+{
+    $payload = array_merge([
+        'species_id' => $speciesId,
+        'slug' => null,
+        'shorthand' => null,
+        'inheritance_mode' => 'recessive',
+        'description' => null,
+        'normal_label' => null,
+        'heterozygous_label' => null,
+        'homozygous_label' => null,
+        'originator' => $sample['originator'] ?? null,
+        'origin_url' => $sample['origin_url'] ?? null,
+        'image_path' => $sample['image_path'] ?? null,
+        'is_reference' => !empty($sample['is_reference']) ? 1 : 0,
+        'display_order' => 0,
+    ], $sample);
+
+    $payload['slug'] = $payload['slug'] ? $payload['slug'] : slugify($payload['name']);
+    $payload['inheritance_mode'] = normalize_inheritance_mode($payload['inheritance_mode']);
+    $payload['is_reference'] = !empty($payload['is_reference']) ? 1 : 0;
+
+    return $payload;
+}
+
+function ensure_gene_samples_exist(PDO $pdo, int $speciesId, array $samples): void
+{
+    foreach ($samples as $sample) {
+        $payload = normalize_gene_sample($sample, $speciesId);
+
+        $stmt = $pdo->prepare('SELECT id FROM genetic_genes WHERE species_id = :species AND slug = :slug');
+        $stmt->execute([
+            'species' => $speciesId,
+            'slug' => $payload['slug'],
+        ]);
+
+        $existing = $stmt->fetchColumn();
+
+        if (!$existing) {
+            create_genetic_gene($pdo, $payload);
+        }
+    }
+}
+
 function synchronize_gene_samples(PDO $pdo, int $speciesId, array $samples): void
 {
     foreach ($samples as $sample) {
-        $payload = array_merge([
-            'species_id' => $speciesId,
-            'slug' => null,
-            'shorthand' => null,
-            'inheritance_mode' => 'recessive',
-            'description' => null,
-            'normal_label' => null,
-            'heterozygous_label' => null,
-            'homozygous_label' => null,
-            'originator' => $sample['originator'] ?? null,
-            'origin_url' => $sample['origin_url'] ?? null,
-            'image_path' => $sample['image_path'] ?? null,
-            'is_reference' => !empty($sample['is_reference']) ? 1 : 0,
-            'display_order' => 0,
-        ], $sample);
-
-        $payload['slug'] = $payload['slug'] ? $payload['slug'] : slugify($payload['name']);
-        $payload['inheritance_mode'] = normalize_inheritance_mode($payload['inheritance_mode']);
-        $payload['is_reference'] = !empty($payload['is_reference']) ? 1 : 0;
+        $payload = normalize_gene_sample($sample, $speciesId);
 
         $stmt = $pdo->prepare('SELECT * FROM genetic_genes WHERE species_id = :species AND slug = :slug');
         $stmt->execute([
@@ -1770,7 +1796,7 @@ function ensure_default_genetics(PDO $pdo): void
     $baseGenes = apply_gene_media_defaults($baseGenes, 'HognoseMorphs.com Morph Archiv', 'https://hognose-morphs.com/morphs', $hognoseImages);
     $referenceMorphs = apply_gene_media_defaults($referenceMorphs, 'HognoseMorphs.com Morph Archiv', 'https://hognose-morphs.com/morphs', $hognoseImages);
 
-    synchronize_gene_samples($pdo, $speciesId, array_merge($baseGenes, $referenceMorphs));
+    ensure_gene_samples_exist($pdo, $speciesId, array_merge($baseGenes, $referenceMorphs));
 
     $pogonaDescription = 'Die Bartagame (<em>Pogona vitticeps</em>) ist eine der beliebtesten Terrarienarten. Kombinierte Farbschläge aus Hypo, Translucent, Leatherback, Dunner, Witblits und Zero bestimmen das Erscheinungsbild. Die hinterlegten Gene bilden bewährte Linien für die Zuchtplanung ab.';
     $pogona = get_genetic_species_by_slug($pdo, 'pogona-vitticeps');
@@ -2033,6 +2059,6 @@ function ensure_default_genetics(PDO $pdo): void
     $pogonaGenes = apply_gene_media_defaults($pogonaGenes, 'Dragondreams.de Morpharchiv', 'https://dragondreams.de/morphs', $pogonaImages);
     $pogonaReferences = apply_gene_media_defaults($pogonaReferences, 'Dragondreams.de Morpharchiv', 'https://dragondreams.de/morphs', $pogonaImages);
 
-    synchronize_gene_samples($pdo, $pogonaId, array_merge($pogonaGenes, $pogonaReferences));
+    ensure_gene_samples_exist($pdo, $pogonaId, array_merge($pogonaGenes, $pogonaReferences));
 }
 
