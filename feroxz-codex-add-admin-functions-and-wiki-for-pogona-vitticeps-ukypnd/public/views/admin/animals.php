@@ -45,6 +45,12 @@
                         </td>
                         <td>
                             <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/animals&edit=<?= (int)$animal['id'] ?>">Bearbeiten</a>
+                            <form method="post" style="display:inline">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="duplicate_animal">
+                                <input type="hidden" name="animal_id" value="<?= (int)$animal['id'] ?>">
+                                <button type="submit" class="btn btn-secondary">Duplizieren</button>
+                            </form>
                             <form method="post" style="display:inline" onsubmit="return confirm('Tier wirklich löschen?');">
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="action" value="delete_animal">

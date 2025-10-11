@@ -6,9 +6,15 @@ function ensure_default_settings(PDO $pdo): void
         'site_tagline' => 'Spezialisierte Pflege für Bartagamen und Hakennasennattern',
         'hero_intro' => 'Entdecke unsere Leidenschaft für verantwortungsvolle Haltung und Zucht.',
         'adoption_intro' => 'Diese Tiere suchen ein liebevolles Zuhause. Kontaktiere uns für mehr Informationen.',
-        'footer_text' => '© ' . date('Y') . ' FeroxZ CMS — Version 3.0',
+        'footer_text' => '© ' . date('Y') . ' FeroxZ CMS — Version 4.0',
         'contact_email' => 'info@example.com',
         'active_theme' => 'aurora',
+        'home_show_hero' => '1',
+        'home_show_animals' => '1',
+        'home_show_adoption' => '1',
+        'home_show_news' => '1',
+        'home_show_care' => '1',
+        'site_logo_path' => '',
     ];
 
     foreach (get_content_definitions() as $key => $definition) {
@@ -18,6 +24,14 @@ function ensure_default_settings(PDO $pdo): void
     foreach ($defaults as $key => $value) {
         $stmt = $pdo->prepare('INSERT OR IGNORE INTO settings(key, value) VALUES (:key, :value)');
         $stmt->execute(['key' => $key, 'value' => $value]);
+    }
+
+    $currentFooter = get_setting($pdo, 'footer_text', '');
+    if ($currentFooter !== '') {
+        $updatedFooter = preg_replace('/Version\s+\d+\.\d+/', 'Version 4.0', $currentFooter);
+        if ($updatedFooter !== null && $updatedFooter !== $currentFooter) {
+            set_setting($pdo, 'footer_text', $updatedFooter);
+        }
     }
 }
 
@@ -36,4 +50,23 @@ function get_all_settings(PDO $pdo): array
         $settings[$row['key']] = $row['value'];
     }
     return $settings;
+}
+
+function setting_enabled(array $settings, string $key, bool $default = true): bool
+{
+    if (!array_key_exists($key, $settings)) {
+        return $default;
+    }
+
+    $value = $settings[$key];
+    if (is_bool($value)) {
+        return $value;
+    }
+
+    $normalized = strtolower(trim((string)$value));
+    if ($normalized === '') {
+        return $default;
+    }
+
+    return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
 }

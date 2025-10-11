@@ -1,5 +1,5 @@
 <?php
-function create_animal(PDO $pdo, array $data): void
+function create_animal(PDO $pdo, array $data): int
 {
     $stmt = $pdo->prepare('INSERT INTO animals(name, species, species_slug, age, genetics, genetics_profile, origin, special_notes, description, image_path, owner_id, is_private, is_showcased, is_piebald) VALUES (:name, :species, :species_slug, :age, :genetics, :genetics_profile, :origin, :special_notes, :description, :image_path, :owner_id, :is_private, :is_showcased, :is_piebald)');
     $stmt->execute([
@@ -18,6 +18,7 @@ function create_animal(PDO $pdo, array $data): void
         'is_showcased' => normalize_flag($data['is_showcased'] ?? false),
         'is_piebald' => normalize_flag($data['is_piebald'] ?? false),
     ]);
+    return (int)$pdo->lastInsertId();
 }
 
 function update_animal(PDO $pdo, int $id, array $data): void
@@ -40,6 +41,50 @@ function update_animal(PDO $pdo, int $id, array $data): void
         'is_piebald' => normalize_flag($data['is_piebald'] ?? false),
         'id' => $id
     ]);
+}
+
+function duplicate_animal(PDO $pdo, int $id): ?int
+{
+    $source = get_animal($pdo, $id);
+    if (!$source) {
+        return null;
+    }
+
+    $baseName = trim((string)($source['name'] ?? ''));
+    if ($baseName === '') {
+        $baseName = 'Tier';
+    }
+
+    $candidate = $baseName . ' (Kopie)';
+    $suffix = 2;
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM animals WHERE name = :name');
+    while (true) {
+        $stmt->execute(['name' => $candidate]);
+        if ((int)$stmt->fetchColumn() === 0) {
+            break;
+        }
+        $candidate = sprintf('%s (Kopie %d)', $baseName, $suffix);
+        $suffix++;
+    }
+
+    $data = [
+        'name' => $candidate,
+        'species' => $source['species'] ?? '',
+        'species_slug' => $source['species_slug'] ?? null,
+        'age' => $source['age'] ?? null,
+        'genetics' => $source['genetics'] ?? null,
+        'genetics_profile' => $source['genetics_profile'] ?? null,
+        'origin' => $source['origin'] ?? null,
+        'special_notes' => $source['special_notes'] ?? null,
+        'description' => $source['description'] ?? null,
+        'image_path' => $source['image_path'] ?? null,
+        'owner_id' => $source['owner_id'] ?? null,
+        'is_private' => !empty($source['is_private']),
+        'is_showcased' => !empty($source['is_showcased']),
+        'is_piebald' => !empty($source['is_piebald']),
+    ];
+
+    return create_animal($pdo, $data);
 }
 
 function delete_animal(PDO $pdo, int $id): void

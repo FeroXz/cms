@@ -13,6 +13,11 @@ function get_available_themes(): array
             'stylesheet' => 'theme-serpent.css',
             'body_class' => 'theme-serpent',
         ],
+        'nebula' => [
+            'label' => 'Nebula Prism',
+            'stylesheet' => 'theme-nebula.css',
+            'body_class' => 'theme-nebula',
+        ],
     ];
 }
 

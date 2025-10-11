@@ -10,19 +10,18 @@
             theme: {
                 extend: {
                     colors: {
-                        night: {
-                            900: '#020617',
-                            800: '#0f172a',
-                            700: '#1e293b',
-                        },
                         brand: {
-                            400: '#22d3ee',
-                            500: '#06b6d4',
-                            600: '#0891b2',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                        },
+                        slate: {
+                            950: '#020617',
                         },
                     },
                     boxShadow: {
-                        glow: '0 25px 65px rgba(15, 118, 110, 0.35)',
+                        glow: '0 30px 80px rgba(99, 102, 241, 0.25)',
                     },
                     fontFamily: {
                         sans: ['Inter', 'system-ui', 'ui-sans-serif', 'Segoe UI', 'sans-serif'],
@@ -40,20 +39,25 @@
         <link rel="stylesheet" href="<?= asset($themeConfig['stylesheet']) ?>">
     <?php endif; ?>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-night-900 via-night-800 to-slate-900 font-sans text-slate-100 <?= htmlspecialchars($themeConfig['body_class'] ?? '') ?>">
-<header class="sticky top-0 z-50 border-b border-white/5 bg-night-900/80 backdrop-blur">
+<body class="min-h-screen bg-slate-50 font-sans text-slate-800 <?= htmlspecialchars($themeConfig['body_class'] ?? '') ?>">
+<header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur">
     <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <a href="<?= BASE_URL ?>/index.php" class="flex items-center gap-3">
-            <span class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/20 text-lg font-semibold text-brand-400 ring-2 ring-brand-500/30">
-                <?= strtoupper(substr($settings['site_title'] ?? APP_NAME, 0, 2)) ?>
-            </span>
-            <span>
-                <span class="block text-lg font-semibold tracking-wide text-slate-100"><?= htmlspecialchars($settings['site_title'] ?? APP_NAME) ?></span>
-                <span class="block text-sm text-slate-400"><?= htmlspecialchars($settings['site_tagline'] ?? '') ?></span>
+            <?php $logoPath = trim((string)($settings['site_logo_path'] ?? '')); ?>
+            <?php if ($logoPath !== ''): ?>
+                <img src="<?= BASE_URL . '/' . htmlspecialchars($logoPath) ?>" alt="<?= htmlspecialchars($settings['site_title'] ?? APP_NAME) ?> Logo" class="h-12 w-12 rounded-2xl border border-slate-200 object-contain bg-white p-1" loading="lazy">
+            <?php else: ?>
+                <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-lg font-semibold text-brand-500 ring-1 ring-brand-400/40">
+                    <?= strtoupper(substr($settings['site_title'] ?? APP_NAME, 0, 2)) ?>
+                </span>
+            <?php endif; ?>
+            <span class="hidden flex-col leading-tight sm:flex">
+                <span class="text-lg font-semibold tracking-tight text-slate-900"><?= htmlspecialchars($settings['site_title'] ?? APP_NAME) ?></span>
+                <span class="text-sm text-slate-500"><?= htmlspecialchars($settings['site_tagline'] ?? '') ?></span>
             </span>
         </a>
         <div class="flex items-center gap-3 lg:hidden">
-            <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 text-slate-200 shadow-sm shadow-brand-600/20 transition hover:border-brand-400 hover:text-brand-300" data-mobile-nav-toggle>
+            <button type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-brand-400 hover:text-brand-500" data-mobile-nav-toggle>
                 <span class="sr-only">Navigation umschalten</span>
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
@@ -61,16 +65,16 @@
             </button>
         </div>
         <?php
-            $navLinkBase = 'inline-flex items-center gap-1 rounded-full border border-white/10 px-4 py-2 text-slate-200 transition hover:border-brand-400 hover:bg-brand-500/10 hover:text-brand-100';
-            $navLinkActive = 'inline-flex items-center gap-1 rounded-full border border-brand-400 bg-brand-500/90 px-4 py-2 text-night-900 shadow-glow';
-            $dropdownLinkBase = 'block rounded-lg px-3 py-2 text-left text-slate-200 transition hover:bg-white/5 hover:text-brand-200';
-            $dropdownLinkActive = 'block rounded-lg px-3 py-2 text-left bg-brand-500/20 text-brand-100 shadow-inner shadow-brand-600/20';
-            $mobileLinkBase = 'block rounded-xl border border-white/5 px-4 py-2 text-slate-200 transition hover:border-brand-400 hover:bg-brand-500/10 hover:text-brand-100';
-            $mobileLinkActive = 'block rounded-xl border border-brand-400 bg-brand-500/20 px-4 py-2 text-brand-50 shadow-glow';
-            $mobileSubBase = 'block rounded-lg px-3 py-2 text-slate-300 hover:bg-brand-500/10 hover:text-brand-100';
-            $mobileSubActive = 'block rounded-lg px-3 py-2 text-brand-100 bg-brand-500/20';
+            $navLinkBase = 'inline-flex items-center gap-1 rounded-full border border-transparent px-4 py-2 text-sm font-medium text-slate-600 transition hover:text-brand-500';
+            $navLinkActive = 'inline-flex items-center gap-1 rounded-full border border-brand-300 bg-brand-500/10 px-4 py-2 text-sm font-semibold text-brand-600 shadow-glow';
+            $dropdownLinkBase = 'block rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-brand-500/10 hover:text-brand-600';
+            $dropdownLinkActive = 'block rounded-lg px-3 py-2 text-left bg-brand-500/10 text-brand-600 font-semibold';
+            $mobileLinkBase = 'block rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-brand-300 hover:text-brand-600';
+            $mobileLinkActive = 'block rounded-2xl border border-brand-300 bg-brand-500/10 px-4 py-2 text-sm font-semibold text-brand-600 shadow-glow';
+            $mobileSubBase = 'block rounded-xl px-3 py-2 text-sm text-slate-600 transition hover:bg-brand-500/10 hover:text-brand-600';
+            $mobileSubActive = 'block rounded-xl px-3 py-2 text-sm font-semibold text-brand-600 bg-brand-500/10';
         ?>
-        <nav class="hidden items-center gap-2 text-sm font-medium lg:flex" data-desktop-nav>
+        <nav class="hidden items-center gap-2 lg:flex" data-desktop-nav>
             <a href="<?= BASE_URL ?>/index.php" class="<?= ($currentRoute === 'home') ? $navLinkActive : $navLinkBase ?>">Start</a>
             <a href="<?= BASE_URL ?>/index.php?route=animals" class="<?= ($currentRoute === 'animals') ? $navLinkActive : $navLinkBase ?>">Tierübersicht</a>
             <a href="<?= BASE_URL ?>/index.php?route=news" class="<?= ($currentRoute === 'news') ? $navLinkActive : $navLinkBase ?>">Neuigkeiten</a>
@@ -82,7 +86,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
                     </svg>
                 </button>
-                <div class="nav-dropdown">
+                <div class="nav-dropdown rounded-2xl border border-slate-200 bg-white/90 shadow-xl shadow-slate-200/70">
                     <a href="<?= BASE_URL ?>/index.php?route=care-guide" class="<?= ($currentRoute === 'care-guide') ? $dropdownLinkActive : $dropdownLinkBase ?>">Übersicht</a>
                     <?php foreach (($navCareArticles ?? []) as $careNav): ?>
                         <a href="<?= BASE_URL ?>/index.php?route=care-article&amp;slug=<?= urlencode($careNav['slug']) ?>" class="<?= ($currentRoute === 'care-article' && ($activeCareSlug ?? '') === $careNav['slug']) ? $dropdownLinkActive : $dropdownLinkBase ?>"><?= htmlspecialchars($careNav['title']) ?></a>
@@ -90,6 +94,7 @@
                 </div>
             </div>
             <a href="<?= BASE_URL ?>/index.php?route=genetics" class="<?= ($currentRoute === 'genetics') ? $navLinkActive : $navLinkBase ?>">Genetik Rechner</a>
+            <a href="<?= BASE_URL ?>/index.php?route=gallery" class="<?= ($currentRoute === 'gallery') ? $navLinkActive : $navLinkBase ?>">Galerie</a>
             <?php foreach (($navPages ?? []) as $navPage): ?>
                 <?php
                     $parentActive = ($currentRoute === 'page' && ($activePageSlug ?? '') === $navPage['slug']);
@@ -112,7 +117,7 @@
                         <?php endif; ?>
                     </a>
                     <?php if (!empty($navPage['children'])): ?>
-                        <div class="nav-dropdown">
+                        <div class="nav-dropdown rounded-2xl border border-slate-200 bg-white/90 shadow-xl shadow-slate-200/70">
                             <?php foreach ($navPage['children'] as $childPage): ?>
                                 <a href="<?= BASE_URL ?>/index.php?route=page&amp;slug=<?= urlencode($childPage['slug']) ?>" class="<?= ($currentRoute === 'page' && ($activePageSlug ?? '') === $childPage['slug']) ? $dropdownLinkActive : $dropdownLinkBase ?>"><?= htmlspecialchars($childPage['title']) ?></a>
                             <?php endforeach; ?>
@@ -132,7 +137,7 @@
         </nav>
     </div>
     <div class="hidden lg:hidden" data-mobile-nav-panel>
-        <nav class="mx-4 mb-4 space-y-2 rounded-2xl border border-white/5 bg-night-900/95 p-4 text-sm shadow-lg shadow-brand-600/10">
+        <nav class="mx-4 mb-4 space-y-2 rounded-3xl border border-slate-200 bg-white/95 p-4 text-sm shadow-xl shadow-slate-200/70">
             <a href="<?= BASE_URL ?>/index.php" class="<?= ($currentRoute === 'home') ? $mobileLinkActive : $mobileLinkBase ?>">Start</a>
             <a href="<?= BASE_URL ?>/index.php?route=animals" class="<?= ($currentRoute === 'animals') ? $mobileLinkActive : $mobileLinkBase ?>">Tierübersicht</a>
             <a href="<?= BASE_URL ?>/index.php?route=news" class="<?= ($currentRoute === 'news') ? $mobileLinkActive : $mobileLinkBase ?>">Neuigkeiten</a>
@@ -149,6 +154,7 @@
                 </div>
             </details>
             <a href="<?= BASE_URL ?>/index.php?route=genetics" class="<?= ($currentRoute === 'genetics') ? $mobileLinkActive : $mobileLinkBase ?>">Genetik Rechner</a>
+            <a href="<?= BASE_URL ?>/index.php?route=gallery" class="<?= ($currentRoute === 'gallery') ? $mobileLinkActive : $mobileLinkBase ?>">Galerie</a>
             <?php foreach (($navPages ?? []) as $navPage): ?>
                 <?php
                     $parentActive = ($currentRoute === 'page' && ($activePageSlug ?? '') === $navPage['slug']);
@@ -159,8 +165,9 @@
                             break;
                         }
                     }
+                    $isActive = $parentActive || $childActive;
                 ?>
-                <details class="group" <?= ($parentActive || $childActive) ? 'open' : '' ?>>
+                <details class="group" <?= $isActive ? 'open' : '' ?>>
                     <summary class="<?= $mobileLinkBase ?> flex cursor-pointer list-none items-center justify-between">
                         <span><?= htmlspecialchars($navPage['title']) ?></span>
                         <?php if (!empty($navPage['children'])): ?>

@@ -1,8 +1,8 @@
     </div>
 </main>
-<footer class="border-t border-white/5 bg-night-900/80 py-10">
-    <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-        <div class="prose prose-invert max-w-none text-slate-300">
+<footer class="border-t border-slate-200 bg-white py-10">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div class="prose max-w-none text-slate-600">
             <?= nl2br(htmlspecialchars($settings['footer_text'] ?? '')) ?>
         </div>
         <div class="flex items-center gap-3 text-xs text-slate-500">

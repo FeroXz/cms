@@ -143,6 +143,15 @@ switch ($route) {
         ]);
         break;
 
+    case 'gallery':
+        $settings = get_all_settings($pdo);
+        $galleryImages = get_published_gallery_images($pdo);
+        view('gallery/index', [
+            'settings' => $settings,
+            'galleryImages' => $galleryImages,
+        ]);
+        break;
+
     case 'genetics':
         $settings = get_all_settings($pdo);
         $speciesList = get_genetic_species($pdo);
@@ -153,20 +162,51 @@ switch ($route) {
             $selectedSlug = $speciesList[0]['slug'];
         }
         $genes = $selectedSpecies ? get_genetic_genes($pdo, (int)$selectedSpecies['id']) : [];
+        $activeGenes = array_values(array_filter($genes, static fn($gene) => empty($gene['is_reference'])));
+        $referenceGenes = array_values(array_filter($genes, static fn($gene) => !empty($gene['is_reference'])));
         $parentSelections = [
             'parent1' => $_POST['parent1'] ?? [],
             'parent2' => $_POST['parent2'] ?? [],
         ];
         $results = null;
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedSpecies && !empty($genes)) {
-            $results = calculate_genetic_outcomes($genes, $parentSelections['parent1'], $parentSelections['parent2']);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedSpecies && !empty($activeGenes)) {
+            $rawResults = calculate_genetic_outcomes($activeGenes, $parentSelections['parent1'], $parentSelections['parent2']);
+            if ($rawResults) {
+                $results = [];
+                foreach ($rawResults['combined'] as $entry) {
+                    $states = [];
+                    foreach ($entry['states'] as $stateEntry) {
+                        if (empty($stateEntry['label'])) {
+                            continue;
+                        }
+
+                        $states[] = [
+                            'gene' => $stateEntry['gene'] ?? '',
+                            'state' => $stateEntry['state'] ?? 'normal',
+                            'label' => $stateEntry['label'],
+                        ];
+                    }
+
+                    $label = trim((string)($entry['label'] ?? ''));
+                    if ($label === '') {
+                        $label = 'Wildtyp';
+                    }
+
+                    $results[] = [
+                        'label' => $label,
+                        'probability' => (float)($entry['probability'] ?? 0),
+                        'states' => $states,
+                    ];
+                }
+            }
         }
         view('genetics/index', [
             'settings' => $settings,
             'speciesList' => $speciesList,
             'selectedSpecies' => $selectedSpecies,
             'selectedSpeciesSlug' => $selectedSlug,
-            'genes' => $genes,
+            'genes' => $activeGenes,
+            'referenceGenes' => $referenceGenes,
             'parentSelections' => $parentSelections,
             'results' => $results,
         ]);
@@ -193,8 +233,20 @@ switch ($route) {
             flash('error', 'Keine Berechtigung.');
             redirect('admin/dashboard');
         }
+        $settings = get_all_settings($pdo);
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_csrf_token('admin/settings');
+            $logoPath = $settings['site_logo_path'] ?? '';
+            if (!empty($_POST['remove_logo'])) {
+                $logoPath = '';
+            }
+            if (!empty($_FILES['site_logo']['name'])) {
+                $upload = handle_upload($_FILES['site_logo']);
+                if ($upload) {
+                    $logoPath = $upload;
+                }
+            }
+
             update_settings($pdo, [
                 'site_title' => $_POST['site_title'] ?? '',
                 'site_tagline' => $_POST['site_tagline'] ?? '',
@@ -203,11 +255,16 @@ switch ($route) {
                 'footer_text' => $_POST['footer_text'] ?? '',
                 'contact_email' => $_POST['contact_email'] ?? '',
                 'active_theme' => $_POST['active_theme'] ?? 'aurora',
+                'home_show_hero' => !empty($_POST['home_show_hero']) ? '1' : '0',
+                'home_show_animals' => !empty($_POST['home_show_animals']) ? '1' : '0',
+                'home_show_adoption' => !empty($_POST['home_show_adoption']) ? '1' : '0',
+                'home_show_news' => !empty($_POST['home_show_news']) ? '1' : '0',
+                'home_show_care' => !empty($_POST['home_show_care']) ? '1' : '0',
+                'site_logo_path' => $logoPath,
             ]);
             flash('success', 'Einstellungen gespeichert.');
             redirect('admin/settings');
         }
-        $settings = get_all_settings($pdo);
         $flashSuccess = flash('success');
         view('admin/settings', compact('settings', 'flashSuccess'));
         break;
@@ -354,7 +411,8 @@ switch ($route) {
         $speciesGenes = [];
         foreach ($speciesList as $speciesEntry) {
             $speciesBySlug[$speciesEntry['slug']] = $speciesEntry;
-            $speciesGenes[$speciesEntry['slug']] = get_genetic_genes($pdo, (int)$speciesEntry['id']);
+            $speciesGeneList = get_genetic_genes($pdo, (int)$speciesEntry['id']);
+            $speciesGenes[$speciesEntry['slug']] = array_values(array_filter($speciesGeneList, static fn($gene) => empty($gene['is_reference'])));
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -365,6 +423,20 @@ switch ($route) {
                     delete_animal($pdo, $animalId);
                     flash('success', 'Tier gelöscht.');
                 }
+                redirect('admin/animals');
+            }
+
+            if (($_POST['action'] ?? '') === 'duplicate_animal') {
+                require_csrf_token('admin/animals');
+                $animalId = (int)($_POST['animal_id'] ?? 0);
+                if ($animalId) {
+                    $newId = duplicate_animal($pdo, $animalId);
+                    if ($newId) {
+                        flash('success', 'Tier dupliziert. Bitte Details prüfen.');
+                        redirect('admin/animals', ['edit' => $newId]);
+                    }
+                }
+                flash('error', 'Tier konnte nicht dupliziert werden.');
                 redirect('admin/animals');
             }
 
@@ -630,7 +702,8 @@ switch ($route) {
         $speciesGenes = [];
         foreach ($speciesList as $speciesEntry) {
             $speciesBySlug[$speciesEntry['slug']] = $speciesEntry;
-            $speciesGenes[$speciesEntry['slug']] = get_genetic_genes($pdo, (int)$speciesEntry['id']);
+            $speciesGeneList = get_genetic_genes($pdo, (int)$speciesEntry['id']);
+            $speciesGenes[$speciesEntry['slug']] = array_values(array_filter($speciesGeneList, static fn($gene) => empty($gene['is_reference'])));
         }
         $prefillListing = null;
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -803,6 +876,121 @@ switch ($route) {
         view('admin/care', compact('settings', 'careArticles', 'editArticle', 'flashSuccess', 'flashError'));
         break;
 
+    case 'admin/gallery':
+        require_login();
+        if (!is_authorized('can_manage_settings')) {
+            flash('error', 'Keine Berechtigung.');
+            redirect('admin/dashboard');
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $formType = $_POST['form_type'] ?? '';
+            if ($formType === 'create') {
+                require_csrf_token('admin/gallery');
+                $title = trim($_POST['title'] ?? '');
+                $caption = trim($_POST['caption'] ?? '');
+                $imageUrlInput = trim($_POST['image_url'] ?? '');
+                $imagePath = $imageUrlInput !== '' ? $imageUrlInput : null;
+                if (!empty($_FILES['image']['name'] ?? '')) {
+                    $uploaded = handle_upload($_FILES['image']);
+                    if ($uploaded) {
+                        $imagePath = $uploaded;
+                    } else {
+                        flash('error', 'Bild-Upload fehlgeschlagen. Bitte ein gültiges Bild wählen.');
+                    }
+                }
+                if ($title === '' || !$imagePath) {
+                    flash('error', 'Bitte Titel und Bild angeben.');
+                } else {
+                    try {
+                        create_gallery_image($pdo, [
+                            'title' => $title,
+                            'caption' => $caption,
+                            'image_path' => $imagePath,
+                            'display_order' => (int)($_POST['display_order'] ?? 0),
+                            'is_published' => !empty($_POST['is_published']),
+                            'fit_mode' => $_POST['fit_mode'] ?? 'cover',
+                        ]);
+                        flash('success', 'Galeriebild hinzugefügt.');
+                    } catch (Throwable $e) {
+                        flash('error', 'Bild konnte nicht gespeichert werden.');
+                    }
+                }
+                redirect('admin/gallery');
+            } elseif ($formType === 'update') {
+                $id = (int)($_POST['id'] ?? 0);
+                $redirectParams = $id ? ['edit' => $id] : [];
+                require_csrf_token('admin/gallery', $redirectParams);
+                $image = $id ? get_gallery_image($pdo, $id) : null;
+                if (!$image) {
+                    flash('error', 'Eintrag nicht gefunden.');
+                    redirect('admin/gallery');
+                }
+                $imagePath = $image['image_path'];
+                $imageUrlInput = trim($_POST['image_url'] ?? '');
+                if ($imageUrlInput !== '') {
+                    $imagePath = $imageUrlInput;
+                }
+                if (!empty($_FILES['image']['name'] ?? '')) {
+                    $uploaded = handle_upload($_FILES['image']);
+                    if ($uploaded) {
+                        $imagePath = $uploaded;
+                    } else {
+                        flash('error', 'Neuer Bild-Upload fehlgeschlagen.');
+                        redirect('admin/gallery', $redirectParams);
+                    }
+                }
+                try {
+                    update_gallery_image($pdo, $id, [
+                        'title' => trim($_POST['title'] ?? ''),
+                        'caption' => trim($_POST['caption'] ?? ''),
+                        'image_path' => $imagePath,
+                        'display_order' => (int)($_POST['display_order'] ?? $image['display_order']),
+                        'is_published' => !empty($_POST['is_published']),
+                        'fit_mode' => $_POST['fit_mode'] ?? $image['fit_mode'],
+                    ]);
+                    flash('success', 'Galeriebild aktualisiert.');
+                } catch (Throwable $e) {
+                    flash('error', 'Änderung konnte nicht gespeichert werden.');
+                }
+                redirect('admin/gallery', $redirectParams);
+            } elseif ($formType === 'delete') {
+                $id = (int)($_POST['id'] ?? 0);
+                require_csrf_token('admin/gallery');
+                if ($id) {
+                    $image = get_gallery_image($pdo, $id);
+                    if ($image) {
+                        delete_gallery_image($pdo, $id);
+                        $relativePath = ltrim((string)$image['image_path'], '/');
+                        if (str_starts_with((string)$image['image_path'], 'uploads/')) {
+                            $filePath = PUBLIC_PATH . '/' . $relativePath;
+                            if (file_exists($filePath)) {
+                                @unlink($filePath);
+                            } else {
+                                $legacyPath = dirname(__DIR__) . '/' . $relativePath;
+                                if (file_exists($legacyPath)) {
+                                    @unlink($legacyPath);
+                                }
+                            }
+                        }
+                        flash('success', 'Eintrag entfernt.');
+                    }
+                }
+                redirect('admin/gallery');
+            }
+        }
+
+        $settings = get_all_settings($pdo);
+        $galleryImages = get_gallery_images($pdo);
+        $editImage = null;
+        if (isset($_GET['edit'])) {
+            $editImage = get_gallery_image($pdo, (int)$_GET['edit']);
+        }
+        $flashSuccess = flash('success');
+        $flashError = flash('error');
+        view('admin/gallery', compact('settings', 'galleryImages', 'editImage', 'flashSuccess', 'flashError'));
+        break;
+
     case 'admin/genetics':
         require_login();
         if (!is_authorized('can_manage_settings')) {
@@ -858,6 +1046,9 @@ switch ($route) {
                     'normal_label' => $_POST['normal_label'] ?? '',
                     'heterozygous_label' => $_POST['heterozygous_label'] ?? '',
                     'homozygous_label' => $_POST['homozygous_label'] ?? '',
+                    'originator' => $_POST['originator'] ?? '',
+                    'origin_url' => $_POST['origin_url'] ?? '',
+                    'image_path' => $_POST['image_path'] ?? '',
                     'display_order' => (int)($_POST['display_order'] ?? 0),
                 ];
                 if ($data['name'] === '' || $speciesId <= 0) {

@@ -15,11 +15,49 @@ function get_content_definitions(): array
             'default' => 'Pflegeleitfaden',
             'help' => 'Kurzes Label über dem Hero-Abschnitt.',
         ],
+        'home_hero_title' => [
+            'group' => 'Startseite',
+            'label' => 'Hero-Überschrift',
+            'type' => 'text',
+            'default' => 'FeroxZ Reptile Center',
+            'help' => 'Zentrale Überschrift im Hero-Bereich.',
+        ],
+        'home_hero_intro' => [
+            'group' => 'Startseite',
+            'label' => 'Hero-Text',
+            'type' => 'richtext',
+            'default' => 'Unsere Leitfäden decken Beleuchtung, Ernährung, Habitatgestaltung und Gesundheitsvorsorge für <strong>Pogona vitticeps</strong> und <strong>Heterodon nasicus</strong> ab. Registrierte Benutzer erhalten Zugriff auf individuelle Tierakten inklusive Genetik und Besonderheiten.',
+            'help' => 'Ein bis zwei Absätze für den Hero-Bereich.',
+        ],
         'home_hero_secondary_intro' => [
             'group' => 'Startseite',
             'label' => 'Hero-Begleittext',
             'type' => 'richtext',
             'default' => 'Unsere Leitfäden decken Beleuchtung, Ernährung, Habitatgestaltung und Gesundheitsvorsorge für <strong>Pogona vitticeps</strong> und <strong>Heterodon nasicus</strong> ab. Registrierte Benutzer erhalten Zugriff auf individuelle Tierakten inklusive Genetik und Besonderheiten.',
+        ],
+        'home_hero_primary_cta' => [
+            'group' => 'Startseite',
+            'label' => 'Hero-CTA 1 Text',
+            'type' => 'text',
+            'default' => 'Genetik-Rechner starten',
+        ],
+        'home_hero_primary_cta_url' => [
+            'group' => 'Startseite',
+            'label' => 'Hero-CTA 1 Link',
+            'type' => 'text',
+            'default' => BASE_URL . '/index.php?route=genetics',
+        ],
+        'home_hero_secondary_cta' => [
+            'group' => 'Startseite',
+            'label' => 'Hero-CTA 2 Text',
+            'type' => 'text',
+            'default' => 'Pflegewissen entdecken',
+        ],
+        'home_hero_secondary_cta_url' => [
+            'group' => 'Startseite',
+            'label' => 'Hero-CTA 2 Link',
+            'type' => 'text',
+            'default' => BASE_URL . '/index.php?route=care-guide',
         ],
         'home_care_primary_cta' => [
             'group' => 'Startseite',
@@ -44,6 +82,12 @@ function get_content_definitions(): array
             'label' => 'Highlights Unterzeile',
             'type' => 'text',
             'default' => 'Ausgewählte Tiere aus dem Bestand',
+        ],
+        'home_highlights_cta' => [
+            'group' => 'Startseite',
+            'label' => 'Highlights CTA',
+            'type' => 'text',
+            'default' => 'Alle Tiere entdecken',
         ],
         'home_adoption_title' => [
             'group' => 'Startseite',
@@ -274,6 +318,14 @@ function content_value(array $settings, string $key): string
 {
     $definitions = get_content_definitions();
     $default = $definitions[$key]['default'] ?? '';
-    return $settings[$key] ?? $default;
+    if (array_key_exists($key, $settings)) {
+        return $settings[$key];
+    }
+
+    if ($key === 'home_hero_intro' && isset($settings['hero_intro'])) {
+        return $settings['hero_intro'];
+    }
+
+    return $default;
 }
 

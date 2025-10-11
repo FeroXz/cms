@@ -6,7 +6,7 @@
     <div class="alert alert-success" role="status" aria-live="polite"><?= htmlspecialchars($flashSuccess) ?></div>
 <?php endif; ?>
 <div class="card">
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         <?= csrf_field() ?>
         <?php $themes = get_available_themes(); ?>
         <label>Seitentitel
@@ -15,6 +15,19 @@
         <label>Untertitel
             <input type="text" name="site_tagline" value="<?= htmlspecialchars($settings['site_tagline'] ?? '') ?>">
         </label>
+        <fieldset class="form-fieldset">
+            <legend>Logo</legend>
+            <p class="form-hint">Das Logo erscheint oben links in der Navigation. SVG, PNG oder JPG werden unterstützt.</p>
+            <input type="file" name="site_logo" accept="image/*">
+            <?php if (!empty($settings['site_logo_path'])): ?>
+                <div class="settings-logo-preview">
+                    <img src="<?= BASE_URL . '/' . htmlspecialchars($settings['site_logo_path']) ?>" alt="Aktuelles Logo" loading="lazy">
+                    <label class="settings-logo-remove">
+                        <input type="checkbox" name="remove_logo" value="1"> Logo entfernen
+                    </label>
+                </div>
+            <?php endif; ?>
+        </fieldset>
         <label>Hero-Einleitung
             <textarea name="hero_intro" class="rich-text"><?= htmlspecialchars($settings['hero_intro'] ?? '') ?></textarea>
         </label>
@@ -34,6 +47,28 @@
                 <?php endforeach; ?>
             </select>
         </label>
+        <fieldset class="form-fieldset">
+            <legend>Startseiten-Sektionen</legend>
+            <p class="text-muted" style="font-size:0.85rem;margin-bottom:0.75rem;">Lege fest, welche Bereiche auf der öffentlichen Startseite sichtbar sind.</p>
+            <?php
+                $homeSectionFlags = [
+                    'home_show_hero' => 'Hero-Bereich & Highlights',
+                    'home_show_animals' => 'Tier-Highlights',
+                    'home_show_adoption' => 'Adoption & Abgabe',
+                    'home_show_news' => 'Neuigkeiten',
+                    'home_show_care' => 'Pflegeartikel',
+                ];
+            ?>
+            <div class="grid" style="gap:0.5rem;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
+                <?php foreach ($homeSectionFlags as $flag => $label): ?>
+                    <label style="display:flex;align-items:center;gap:0.5rem;">
+                        <input type="hidden" name="<?= htmlspecialchars($flag) ?>" value="0">
+                        <input type="checkbox" name="<?= htmlspecialchars($flag) ?>" value="1" <?= setting_enabled($settings, $flag) ? 'checked' : '' ?>>
+                        <span><?= htmlspecialchars($label) ?></span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </fieldset>
         <button type="submit">Speichern</button>
     </form>
 </div>
