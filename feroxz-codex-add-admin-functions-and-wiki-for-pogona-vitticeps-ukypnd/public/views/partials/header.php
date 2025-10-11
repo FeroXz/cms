@@ -90,6 +90,7 @@
                 </div>
             </div>
             <a href="<?= BASE_URL ?>/index.php?route=genetics" class="<?= ($currentRoute === 'genetics') ? $navLinkActive : $navLinkBase ?>">Genetik Rechner</a>
+            <a href="<?= BASE_URL ?>/index.php?route=gallery" class="<?= ($currentRoute === 'gallery') ? $navLinkActive : $navLinkBase ?>">Galerie</a>
             <?php foreach (($navPages ?? []) as $navPage): ?>
                 <?php
                     $parentActive = ($currentRoute === 'page' && ($activePageSlug ?? '') === $navPage['slug']);
@@ -149,6 +150,7 @@
                 </div>
             </details>
             <a href="<?= BASE_URL ?>/index.php?route=genetics" class="<?= ($currentRoute === 'genetics') ? $mobileLinkActive : $mobileLinkBase ?>">Genetik Rechner</a>
+            <a href="<?= BASE_URL ?>/index.php?route=gallery" class="<?= ($currentRoute === 'gallery') ? $mobileLinkActive : $mobileLinkBase ?>">Galerie</a>
             <?php foreach (($navPages ?? []) as $navPage): ?>
                 <?php
                     $parentActive = ($currentRoute === 'page' && ($activePageSlug ?? '') === $navPage['slug']);
