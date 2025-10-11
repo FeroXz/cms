@@ -133,6 +133,37 @@ function ensure_directory(string $dir): void
     }
 }
 
+function ensure_upload_storage_ready(): void
+{
+    ensure_directory(UPLOAD_PATH);
+
+    $legacyPath = __DIR__ . '/../uploads';
+    if ($legacyPath === UPLOAD_PATH || !is_dir($legacyPath)) {
+        return;
+    }
+
+    $entries = scandir($legacyPath);
+    if ($entries === false) {
+        return;
+    }
+
+    foreach ($entries as $entry) {
+        if ($entry === '.' || $entry === '..' || strncmp($entry, '.', 1) === 0) {
+            continue;
+        }
+
+        $source = $legacyPath . '/' . $entry;
+        if (!is_file($source)) {
+            continue;
+        }
+
+        $destination = UPLOAD_PATH . '/' . $entry;
+        if (!file_exists($destination)) {
+            @rename($source, $destination);
+        }
+    }
+}
+
 function handle_upload(array $file): ?string
 {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || empty($file['tmp_name'])) {
