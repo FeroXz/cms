@@ -11,6 +11,7 @@ FeroxZ ist ein leichtgewichtiges, auf PHP 8.3 und SQLite basierendes CMS für R
 - 👥 **Benutzer- & Rechteverwaltung**: Admins können weitere Accounts mit eingeschränkten Rechten (Tiere, Adoption, Einstellungen) anlegen.
 - 📈 **Dashboard** mit Kennzahlen zu Bestand, Abgabeinträgen und neuen Anfragen.
 - 💾 **Persistente Speicherung** per SQLite – keine zusätzliche Server-Software notwendig.
+- 🖼️ **Animierte Galerie** mit Upload direkt im Adminbereich inklusive Bildunterschriften und Veröffentlichungsstatus.
 
 ## Systemvoraussetzungen
 
@@ -58,6 +59,21 @@ feroxz/
 ## Styling
 
 Das Theme nutzt Glas-/Neon-Akzente inspiriert von tropischen Terrarien. Anpassungen erfolgen im Stylesheet `public/assets/style.css`.
+
+## Änderungs-Checkliste
+
+- [x] Beispiel-Datensätze für News, Tierübersicht und Tierabgabe integriert.
+- [x] Fehlende Heterodon-nasicus-Morphen inklusive Swiss Chocolate ergänzt.
+- [x] Morphkarten mit Quellen- und Bildnachweisen ausgestattet.
+- [x] Tailwind-basiertes Dashboard sowie öffentliches Galerie-Layout implementiert.
+- [x] Admin-Dashboard nach Tailwind-Vorbild neu aufgebaut inkl. Schnellzugriffen und KPI-Panels.
+- [x] Öffentliches Seitentemplate mit Tailwind neu komponiert (Hero, Tiere, Adoption, News, Pflege).
+- [x] Heterodon-Datenbestand um Jaguar, Goldenrod, Frosted, Pink Pastel, Lightning Line und Red Albino erweitert.
+- [x] Hochgeladene Galerie-Bilder werden automatisch ins öffentliche `public/uploads`-Verzeichnis verschoben und ausgeliefert.
+- [x] Genetikrechner-Ergebnisanzeige wiederhergestellt – Wahrscheinlichkeiten erscheinen direkt unter dem Formular.
+- [x] Genetikrechner stellt Wahrscheinlichkeiten und Morphenbezeichnungen wieder korrekt dar.
+- [x] Genetikrechner fasst identische Phänotypen mit „possible het“-Quoten zusammen (z. B. 75 % / 66 % het Albino).
+- [x] Galerieverwaltung erlaubt je Bild die Wahl von Darstellungsmodus und Fokuspunkt für perfekte Ausschnitte.
 
 ## Entwicklung (lokal)
 

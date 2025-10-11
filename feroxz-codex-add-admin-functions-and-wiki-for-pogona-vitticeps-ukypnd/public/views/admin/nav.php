@@ -15,6 +15,7 @@
         <a href="<?= BASE_URL ?>/index.php?route=admin/news" class="<?= $currentRoute === 'admin/news' ? $linkActive : $linkBase ?>">Neuigkeiten</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/care" class="<?= $currentRoute === 'admin/care' ? $linkActive : $linkBase ?>">Pflegeleitfaden</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/genetics" class="<?= $currentRoute === 'admin/genetics' ? $linkActive : $linkBase ?>">Genetik</a>
+        <a href="<?= BASE_URL ?>/index.php?route=admin/gallery" class="<?= $currentRoute === 'admin/gallery' ? $linkActive : $linkBase ?>">Galerie</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/settings" class="<?= $currentRoute === 'admin/settings' ? $linkActive : $linkBase ?>">Einstellungen</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/content" class="<?= $currentRoute === 'admin/content' ? $linkActive : $linkBase ?>">Texte</a>
     <?php endif; ?>
