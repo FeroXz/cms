@@ -110,8 +110,14 @@
             <button type="submit" class="btn" style="margin-top:1.5rem;align-self:flex-start;"><?= htmlspecialchars(content_value($settings, 'genetics_submit')) ?></button>
         </form>
         <script>
-            window.GENETIC_GENE_DATA = <?= json_encode($geneStatePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-            window.GENETIC_PARENT_SELECTIONS = <?= json_encode($parentSelections, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            window.GENETIC_GENE_DATA = <?= json_encode(
+                $geneStatePayload,
+                JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
+            ) ?>;
+            window.GENETIC_PARENT_SELECTIONS = <?= json_encode(
+                $parentSelections,
+                JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
+            ) ?>;
         </script>
         <?php if (!empty($results)): ?>
             <section style="margin-top:2rem;margin-bottom:3rem;">
