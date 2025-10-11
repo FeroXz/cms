@@ -451,16 +451,18 @@ input[type="checkbox"] {
   padding: 0.5rem 0.75rem;
 }
 
+
 .gene-selector {
   display: grid;
-  gap: 1.5rem;
-  border: 1px solid var(--border);
-  border-radius: 1.5rem;
-  background: rgba(2, 6, 23, 0.78);
-  padding: 1.5rem;
+  gap: 1.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 1.75rem;
+  background: rgba(2, 6, 23, 0.68);
+  backdrop-filter: blur(12px);
+  padding: 2rem;
 }
 
-.gene-selector__intro p {
+.gene-selector__intro {
   color: var(--text-muted);
   font-size: 0.95rem;
 }
@@ -471,10 +473,11 @@ input[type="checkbox"] {
 }
 
 .gene-parent {
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 1.25rem;
-  padding: 1.25rem;
-  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
   display: grid;
   gap: 1rem;
 }
@@ -518,11 +521,11 @@ input[type="checkbox"] {
 .gene-parent__suggestions {
   display: grid;
   gap: 0.4rem;
-  padding: 0.6rem;
-  border-radius: 0.9rem;
+  padding: 0.75rem;
+  border-radius: 1rem;
   border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(2, 6, 23, 0.9);
-  max-height: 200px;
+  background: rgba(2, 6, 23, 0.92);
+  max-height: 220px;
   overflow-y: auto;
 }
 
@@ -563,6 +566,11 @@ input[type="checkbox"] {
 .tag-carrier {
   background: rgba(34, 211, 238, 0.18);
   color: var(--accent);
+}
+
+.tag-possible {
+  background: rgba(129, 140, 248, 0.22);
+  color: #a5b4fc;
 }
 
 .tag-normal {
@@ -616,6 +624,145 @@ input[type="checkbox"] {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+}
+
+.gene-reference__media {
+  position: relative;
+  margin: 1rem 0;
+  border-radius: 1rem;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.25), rgba(15, 23, 42, 0.7));
+}
+
+.gene-reference__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.05);
+  transition: transform 0.85s ease;
+}
+
+.gene-reference__card:hover .gene-reference__media img {
+  transform: scale(1.12);
+}
+
+.gene-reference__meta {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gene-reference__meta a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.gene-reference__meta a:hover {
+  text-decoration: underline;
+}
+
+.gallery-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.gallery-card {
+  position: relative;
+  border-radius: 1.75rem;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: radial-gradient(circle at 0% 0%, rgba(34, 211, 238, 0.12), rgba(15, 23, 42, 0.9));
+  box-shadow: 0 30px 60px rgba(8, 47, 73, 0.45);
+  cursor: pointer;
+  transition: transform 0.6s ease, box-shadow 0.6s ease, border-color 0.6s ease;
+  animation: galleryFloat 14s ease-in-out infinite;
+}
+
+.gallery-card:nth-child(2n) {
+  animation-delay: 4s;
+}
+
+.gallery-card:nth-child(3n) {
+  animation-delay: 7s;
+}
+
+.gallery-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.gallery-card:hover {
+  transform: translateY(-6px) scale(1.01);
+  border-color: var(--accent);
+  box-shadow: 0 38px 70px rgba(6, 182, 212, 0.35);
+}
+
+.gallery-card__figure {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  --gallery-fit: cover;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 64, 175, 0.25));
+}
+
+.gallery-card__figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: var(--gallery-fit, cover);
+  object-position: center;
+  filter: saturate(1.05) contrast(1.05);
+  transition: transform 0.8s ease, filter 0.8s ease;
+}
+
+.gallery-card:hover img,
+.gallery-card:focus-visible img {
+  transform: scale(1.08);
+  filter: saturate(1.2) contrast(1.1);
+}
+
+.gallery-card__overlay {
+  position: absolute;
+  inset: 0;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 20%, rgba(15, 23, 42, 0.85) 80%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.gallery-card__overlay h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.gallery-card__overlay p {
+  margin-top: 0.5rem;
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.gallery-card:hover .gallery-card__overlay,
+.gallery-card:focus-visible .gallery-card__overlay {
+  opacity: 1;
+}
+
+@keyframes galleryFloat {
+  0% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-10px) scale(1.01); }
+  100% { transform: translateY(0px) scale(1); }
 }
 
 @media (min-width: 1024px) {

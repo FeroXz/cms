@@ -114,6 +114,7 @@
                                 <th>Name</th>
                                 <th>Kürzel</th>
                                 <th>Vererbung</th>
+                                <th>Quelle</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -123,6 +124,9 @@
                                     <td>
                                         <strong><?= htmlspecialchars($gene['name']) ?></strong><br>
                                         <small class="text-muted">Slug: <?= htmlspecialchars($gene['slug']) ?></small>
+                                        <?php if (!empty($gene['is_reference'])): ?>
+                                            <span class="badge badge-pattern" style="margin-left:0.5rem;">Referenz</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td><?= htmlspecialchars($gene['shorthand'] ?? '') ?></td>
                                     <td>
@@ -134,6 +138,14 @@
                                             ];
                                         ?>
                                         <?= htmlspecialchars($modeLabels[$gene['inheritance_mode']] ?? $gene['inheritance_mode']) ?>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($gene['originator'])): ?>
+                                            <div><?= htmlspecialchars($gene['originator']) ?></div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($gene['origin_url'])): ?>
+                                            <a href="<?= htmlspecialchars($gene['origin_url']) ?>" class="text-xs" target="_blank" rel="noopener">Quelle öffnen</a>
+                                        <?php endif; ?>
                                     </td>
                                     <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                                         <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/genetics&amp;edit_gene=<?= (int)$gene['id'] ?>">Bearbeiten</a>
@@ -189,6 +201,15 @@
                         </label>
                         <label>Label (homozygot)
                             <input type="text" name="homozygous_label" value="<?= htmlspecialchars($editGene['homozygous_label'] ?? '') ?>" placeholder="z.B. Albino">
+                        </label>
+                        <label>Quelle / Entwickler*in
+                            <input type="text" name="originator" value="<?= htmlspecialchars($editGene['originator'] ?? '') ?>" placeholder="z.B. HognoseMorphs.com">
+                        </label>
+                        <label>Quellen-Link
+                            <input type="url" name="origin_url" value="<?= htmlspecialchars($editGene['origin_url'] ?? '') ?>" placeholder="https://…">
+                        </label>
+                        <label>Bild-URL (öffentliche Galerie)
+                            <input type="text" name="image_path" value="<?= htmlspecialchars($editGene['image_path'] ?? '') ?>" placeholder="https://…/morph.jpg">
                         </label>
                         <label>Reihenfolge
                             <input type="number" name="display_order" value="<?= htmlspecialchars((string)($editGene['display_order'] ?? 0)) ?>">

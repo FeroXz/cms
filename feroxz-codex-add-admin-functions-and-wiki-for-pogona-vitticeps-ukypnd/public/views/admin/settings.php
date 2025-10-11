@@ -34,6 +34,28 @@
                 <?php endforeach; ?>
             </select>
         </label>
+        <fieldset class="form-fieldset">
+            <legend>Startseiten-Sektionen</legend>
+            <p class="text-muted" style="font-size:0.85rem;margin-bottom:0.75rem;">Lege fest, welche Bereiche auf der öffentlichen Startseite sichtbar sind.</p>
+            <?php
+                $homeSectionFlags = [
+                    'home_show_hero' => 'Hero-Bereich & Highlights',
+                    'home_show_animals' => 'Tier-Highlights',
+                    'home_show_adoption' => 'Adoption & Abgabe',
+                    'home_show_news' => 'Neuigkeiten',
+                    'home_show_care' => 'Pflegeartikel',
+                ];
+            ?>
+            <div class="grid" style="gap:0.5rem;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
+                <?php foreach ($homeSectionFlags as $flag => $label): ?>
+                    <label style="display:flex;align-items:center;gap:0.5rem;">
+                        <input type="hidden" name="<?= htmlspecialchars($flag) ?>" value="0">
+                        <input type="checkbox" name="<?= htmlspecialchars($flag) ?>" value="1" <?= setting_enabled($settings, $flag) ? 'checked' : '' ?>>
+                        <span><?= htmlspecialchars($label) ?></span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </fieldset>
         <button type="submit">Speichern</button>
     </form>
 </div>
