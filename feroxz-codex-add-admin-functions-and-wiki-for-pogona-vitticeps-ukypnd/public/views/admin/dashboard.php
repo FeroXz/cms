@@ -70,8 +70,15 @@
                             </div>
                             <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-300">
                                 <a href="mailto:<?= htmlspecialchars($inquiry['sender_email']) ?>" class="inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1 transition hover:border-brand-300 hover:text-brand-100">E-Mail senden <span aria-hidden="true">→</span></a>
-                                <?php if (!empty($inquiry['message'])): ?>
-                                    <span class="inline-flex items-center gap-2 rounded-full bg-night-900/60 px-3 py-1">Hinweis: <?= htmlspecialchars(mb_strimwidth($inquiry['message'], 0, 70, '…')) ?></span>
+                                <?php if (!empty($inquiry['message'])):
+                                    $messagePreview = $inquiry['message'];
+                                    if (function_exists('mb_strimwidth')) {
+                                        $messagePreview = mb_strimwidth($messagePreview, 0, 70, '…', 'UTF-8');
+                                    } elseif (strlen($messagePreview) > 70) {
+                                        $messagePreview = substr($messagePreview, 0, 67) . '…';
+                                    }
+                                ?>
+                                    <span class="inline-flex items-center gap-2 rounded-full bg-night-900/60 px-3 py-1">Hinweis: <?= htmlspecialchars($messagePreview) ?></span>
                                 <?php endif; ?>
                             </div>
                         </article>
