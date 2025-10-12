@@ -80,6 +80,7 @@ Das Theme nutzt Glas-/Neon-Akzente inspiriert von tropischen Terrarien. Anpassun
 - [x] Administrierende können ein eigenes Logo hochladen und im Kopfbereich anzeigen lassen.
 - [x] Tiere lassen sich per Duplizieren-Funktion schnell als Vorlage für neue Datensätze übernehmen.
 - [x] Öffentliches Theme an das „Web UI Kit“ (Sketchappsources) angelehnt und mit hellen Pastellflächen neu gestaltet.
+- [x] Admin-Dashboard komplett im „Solar Ember“-Look neu gestaltet – Layout, Farben und Module bleiben funktional identisch.
 
 ## Entwicklung (lokal)
 

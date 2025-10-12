@@ -24,3 +24,4 @@
 - [x] Galerie-Bilder unterstützen die Wahl des Bildmodus (Cover/Contain) für optimale Darstellung unterschiedlicher Formate.
 - [x] Galerie-Verwaltung verzichtet auf Fokus-Slider und setzt auf klare Moduswahl für den Bildausschnitt.
 - [x] Startseiten-Sektionen (Hero, Tiere, Adoption, News, Pflege) lassen sich im Admin gezielt ein- oder ausblenden.
+- [x] Admin-Dashboard mit komplett neuem „Solar Ember“-Layout, warmen Farbverläufen und unveränderten Funktionen.

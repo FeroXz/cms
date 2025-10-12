@@ -6,7 +6,7 @@ function ensure_default_settings(PDO $pdo): void
         'site_tagline' => 'Spezialisierte Pflege für Bartagamen und Hakennasennattern',
         'hero_intro' => 'Entdecke unsere Leidenschaft für verantwortungsvolle Haltung und Zucht.',
         'adoption_intro' => 'Diese Tiere suchen ein liebevolles Zuhause. Kontaktiere uns für mehr Informationen.',
-        'footer_text' => '© ' . date('Y') . ' FeroxZ CMS — Version 4.0',
+        'footer_text' => '© ' . date('Y') . ' FeroxZ CMS — Version 4.1',
         'contact_email' => 'info@example.com',
         'active_theme' => 'aurora',
         'home_show_hero' => '1',
@@ -28,7 +28,7 @@ function ensure_default_settings(PDO $pdo): void
 
     $currentFooter = get_setting($pdo, 'footer_text', '');
     if ($currentFooter !== '') {
-        $updatedFooter = preg_replace('/Version\s+\d+\.\d+/', 'Version 4.0', $currentFooter);
+        $updatedFooter = preg_replace('/Version\s+\d+\.\d+/', 'Version 4.1', $currentFooter);
         if ($updatedFooter !== null && $updatedFooter !== $currentFooter) {
             set_setting($pdo, 'footer_text', $updatedFooter);
         }
