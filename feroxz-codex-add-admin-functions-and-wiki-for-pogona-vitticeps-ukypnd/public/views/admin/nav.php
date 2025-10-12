@@ -1,8 +1,8 @@
 <?php
-    $linkBase = 'inline-flex w-full items-center justify-center gap-1 rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:border-brand-400 hover:bg-brand-500/10 hover:text-brand-100 lg:w-auto';
-    $linkActive = 'inline-flex w-full items-center justify-center gap-1 rounded-full border border-brand-400 bg-brand-500/20 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-brand-100 shadow-glow lg:w-auto';
+    $linkBase = 'inline-flex w-full items-center justify-center gap-1 rounded-full border border-slate-200/80 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-slate-800 lg:w-auto';
+    $linkActive = 'inline-flex w-full items-center justify-center gap-1 rounded-full border border-sky-400 bg-sky-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-sky-700 shadow-[0_10px_25px_-15px_rgba(14,116,144,0.8)] lg:w-auto';
 ?>
-<nav class="mt-6 flex flex-col gap-2 lg:flex-row lg:flex-wrap">
+<nav class="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
     <a href="<?= BASE_URL ?>/index.php?route=admin/dashboard" class="<?= $currentRoute === 'admin/dashboard' ? $linkActive : $linkBase ?>">Übersicht</a>
     <a href="<?= BASE_URL ?>/index.php?route=admin/animals" class="<?= $currentRoute === 'admin/animals' ? $linkActive : $linkBase ?>">Tiere</a>
     <?php if (is_authorized('can_manage_animals')): ?>
