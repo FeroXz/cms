@@ -7,9 +7,23 @@ function view(string $template, array $data = []): void
 
     global $pdo;
     if (isset($pdo)) {
-        if (!isset($data['navPages']) && function_exists('get_navigation_pages')) {
+        if (!isset($data['settings']) && function_exists('get_all_settings')) {
+            $data['settings'] = get_all_settings($pdo);
+        }
+
+        $settingsData = $data['settings'] ?? [];
+        $novaEnabled = isset($settingsData['nova_features_enabled'])
+            ? setting_enabled($settingsData, 'nova_features_enabled')
+            : false;
+
+        if (!isset($data['navMenu']) && $novaEnabled && function_exists('get_menu_tree')) {
+            $data['navMenu'] = get_menu_tree($pdo, 'primary');
+        }
+
+        if (!isset($data['navPages']) && (!$novaEnabled || empty($data['navMenu'])) && function_exists('get_navigation_pages')) {
             $data['navPages'] = get_navigation_pages($pdo);
         }
+
         if (!isset($data['navCareArticles']) && function_exists('get_published_care_articles')) {
             $data['navCareArticles'] = get_published_care_articles($pdo);
         }
