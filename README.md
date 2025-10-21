@@ -24,3 +24,8 @@
 - [x] Galerie-Bilder unterstützen die Wahl des Bildmodus (Cover/Contain) für optimale Darstellung unterschiedlicher Formate.
 - [x] Galerie-Verwaltung verzichtet auf Fokus-Slider und setzt auf klare Moduswahl für den Bildausschnitt.
 - [x] Startseiten-Sektionen (Hero, Tiere, Adoption, News, Pflege) lassen sich im Admin gezielt ein- oder ausblenden.
+- [x] Admin-Dashboard als „Aurora Control Room“ mit komplett überarbeitetem Layout, Widgets und Farbwelt neu gestaltet.
+- [x] Admin-Dashboard als React-„Mission Control“ mit Tailwind-Komponenten und dynamischen Schnellzugriffen umgesetzt.
+- [x] Kosmisches „Nova Horizon“-Frontend mit dunklem Gradient-Design, neonartigen Karten und neu strukturiertem Hero-Bereich ausgerollt.
+- [x] Nova-Suite im Admin mit Navigations-Builder, Layout-Blaupausen, Mediathek, globalen Meta-Einstellungen und Aktivitätsprotokoll ergänzt.
+- [x] Globale Version 5.0 samt Meta-Description-Steuerung und Social-Vorschau-Verwaltung eingeführt, inklusive Umschalter zum Deaktivieren aller neuen Nova-Funktionen.
