@@ -6,7 +6,7 @@ function ensure_default_settings(PDO $pdo): void
         'site_tagline' => 'Spezialisierte Pflege für Bartagamen und Hakennasennattern',
         'hero_intro' => 'Entdecke unsere Leidenschaft für verantwortungsvolle Haltung und Zucht.',
         'adoption_intro' => 'Diese Tiere suchen ein liebevolles Zuhause. Kontaktiere uns für mehr Informationen.',
-        'footer_text' => '© ' . date('Y') . ' FeroxZ CMS — Version 4.0',
+        'footer_text' => '© ' . date('Y') . ' FeroxZ CMS — Version 5.0',
         'contact_email' => 'info@example.com',
         'active_theme' => 'aurora',
         'home_show_hero' => '1',
@@ -15,6 +15,11 @@ function ensure_default_settings(PDO $pdo): void
         'home_show_news' => '1',
         'home_show_care' => '1',
         'site_logo_path' => '',
+        'nova_features_enabled' => '1',
+        'active_layout_blueprint' => 'stellar-ribbon',
+        'global_meta_description' => 'Modernes Reptilien-CMS mit modularen Inhalten, Mediathek und Erlebnis-Oberfläche.',
+        'global_meta_image' => '',
+        'cms_version' => '5.0',
     ];
 
     foreach (get_content_definitions() as $key => $definition) {
@@ -28,10 +33,15 @@ function ensure_default_settings(PDO $pdo): void
 
     $currentFooter = get_setting($pdo, 'footer_text', '');
     if ($currentFooter !== '') {
-        $updatedFooter = preg_replace('/Version\s+\d+\.\d+/', 'Version 4.0', $currentFooter);
+        $updatedFooter = preg_replace('/Version\s+\d+\.\d+/', 'Version 5.0', $currentFooter);
         if ($updatedFooter !== null && $updatedFooter !== $currentFooter) {
             set_setting($pdo, 'footer_text', $updatedFooter);
         }
+    }
+
+    $storedVersion = get_setting($pdo, 'cms_version', '');
+    if ($storedVersion !== '5.0') {
+        set_setting($pdo, 'cms_version', '5.0');
     }
 }
 
