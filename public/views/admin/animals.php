@@ -11,57 +11,115 @@
 <div class="admin-two-column">
     <div class="card">
         <h2>Bestand</h2>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Species</th>
-                    <th>Eigentümer</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($animals as $animal): ?>
-                    <tr>
-                        <td>
-                            <?= htmlspecialchars($animal['name']) ?>
-                            <?php if (!empty($animal['is_piebald'])): ?>
-                                <span class="animal-marker" title="Geschecktes Tier" aria-label="Geschecktes Tier">⬟</span>
-                            <?php endif; ?>
-                        </td>
-                        <td><?= htmlspecialchars($animal['species']) ?></td>
-                        <td><?= htmlspecialchars($animal['owner_name'] ?? '–') ?></td>
-                        <td>
-                            <?php if ($animal['is_private']): ?>
-                                <span class="badge">Privat</span>
-                            <?php endif; ?>
-                            <?php if ($animal['is_showcased']): ?>
-                                <span class="badge">Highlight</span>
-                            <?php endif; ?>
-                            <?php if (!empty($animal['is_piebald'])): ?>
-                                <span class="badge badge-pattern">Gescheckt</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/animals&edit=<?= (int)$animal['id'] ?>">Bearbeiten</a>
-                            <form method="post" style="display:inline">
-                                <?= csrf_field() ?>
-                                <input type="hidden" name="action" value="duplicate_animal">
-                                <input type="hidden" name="animal_id" value="<?= (int)$animal['id'] ?>">
-                                <button type="submit" class="btn btn-secondary">Duplizieren</button>
-                            </form>
-                            <form method="post" style="display:inline" onsubmit="return confirm('Tier wirklich löschen?');">
-                                <?= csrf_field() ?>
-                                <input type="hidden" name="action" value="delete_animal">
-                                <input type="hidden" name="animal_id" value="<?= (int)$animal['id'] ?>">
-                                <button type="submit" class="btn btn-secondary">Löschen</button>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+        <?php
+            $speciesFilters = [];
+            foreach ($animals as $animalRow) {
+                $speciesName = trim((string)($animalRow['species'] ?? ''));
+                if ($speciesName !== '' && !in_array($speciesName, $speciesFilters, true)) {
+                    $speciesFilters[] = $speciesName;
+                }
+            }
+            sort($speciesFilters, SORT_NATURAL | SORT_FLAG_CASE);
+        ?>
+        <div class="datatable" data-datatable>
+            <div class="datatable__controls">
+                <div class="datatable__search">
+                    <label class="sr-only" for="animal-search">Bestand durchsuchen</label>
+                    <input type="search" id="animal-search" placeholder="Suchen nach Namen, Morphs oder Besitzer" data-datatable-search>
+                </div>
+                <div class="datatable__filters">
+                    <label class="sr-only" for="animal-filter-species">Art filtern</label>
+                    <select id="animal-filter-species" data-datatable-filter="species">
+                        <option value="">Alle Arten</option>
+                        <?php foreach ($speciesFilters as $speciesName): ?>
+                            <option value="<?= htmlspecialchars(strtolower($speciesName)) ?>"><?= htmlspecialchars($speciesName) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label class="sr-only" for="animal-filter-status">Status filtern</label>
+                    <select id="animal-filter-status" data-datatable-filter="status">
+                        <option value="">Alle Status</option>
+                        <option value="highlight">Highlight</option>
+                        <option value="privat">Privat</option>
+                        <option value="piebald">Gescheckt</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th data-sort-key="name">Name</th>
+                            <th data-sort-key="species">Species</th>
+                            <th data-sort-key="owner">Eigentümer</th>
+                            <th data-sort-key="status">Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($animals as $animal): ?>
+                            <?php
+                                $ownerName = trim((string)($animal['owner_name'] ?? ''));
+                                $statusTokens = [];
+                                if (!empty($animal['is_showcased'])) {
+                                    $statusTokens[] = 'highlight';
+                                }
+                                if (!empty($animal['is_private'])) {
+                                    $statusTokens[] = 'privat';
+                                }
+                                if (!empty($animal['is_piebald'])) {
+                                    $statusTokens[] = 'piebald';
+                                }
+                                $statusAttribute = implode('|', $statusTokens);
+                                $nameKey = function_exists('mb_strtolower') ? mb_strtolower($animal['name']) : strtolower($animal['name']);
+                                $speciesKey = function_exists('mb_strtolower') ? mb_strtolower($animal['species']) : strtolower($animal['species']);
+                                $ownerKey = function_exists('mb_strtolower') ? mb_strtolower($ownerName) : strtolower($ownerName);
+                                $statusKey = function_exists('mb_strtolower') ? mb_strtolower($statusAttribute) : strtolower($statusAttribute);
+                            ?>
+                            <tr data-name="<?= htmlspecialchars($nameKey) ?>"
+                                data-species="<?= htmlspecialchars($speciesKey) ?>"
+                                data-owner="<?= htmlspecialchars($ownerKey) ?>"
+                                data-status="<?= htmlspecialchars($statusKey) ?>">
+                                <td>
+                                    <?= htmlspecialchars($animal['name']) ?>
+                                    <?php if (!empty($animal['is_piebald'])): ?>
+                                        <span class="animal-marker" title="Geschecktes Tier" aria-label="Geschecktes Tier">⬟</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= htmlspecialchars($animal['species']) ?></td>
+                                <td><?= htmlspecialchars($ownerName !== '' ? $ownerName : '–') ?></td>
+                                <td>
+                                    <?php if ($animal['is_private']): ?>
+                                        <span class="badge">Privat</span>
+                                    <?php endif; ?>
+                                    <?php if ($animal['is_showcased']): ?>
+                                        <span class="badge">Highlight</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($animal['is_piebald'])): ?>
+                                        <span class="badge badge-pattern">Gescheckt</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/animals&edit=<?= (int)$animal['id'] ?>">Bearbeiten</a>
+                                    <form method="post" style="display:inline">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="action" value="duplicate_animal">
+                                        <input type="hidden" name="animal_id" value="<?= (int)$animal['id'] ?>">
+                                        <button type="submit" class="btn btn-secondary">Duplizieren</button>
+                                    </form>
+                                    <form method="post" style="display:inline" onsubmit="return confirm('Tier wirklich löschen?');">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="action" value="delete_animal">
+                                        <input type="hidden" name="animal_id" value="<?= (int)$animal['id'] ?>">
+                                        <button type="submit" class="btn btn-secondary">Löschen</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <p class="datatable__empty" data-datatable-empty hidden>Keine Treffer für die aktuelle Filterung.</p>
+        </div>
     </div>
     <div class="card">
         <h2><?= $editAnimal ? 'Tier bearbeiten' : 'Neues Tier' ?></h2>
