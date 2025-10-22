@@ -6,6 +6,7 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/themes.php';
 require_once __DIR__ . '/content.php';
 require_once __DIR__ . '/settings.php';
+require_once __DIR__ . '/morph_reference.php';
 require_once __DIR__ . '/cms.php';
 require_once __DIR__ . '/animals.php';
 require_once __DIR__ . '/adoption.php';

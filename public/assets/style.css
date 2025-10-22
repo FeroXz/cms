@@ -153,6 +153,37 @@ button,
   transition: transform 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
 
+.gene-tooltip {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: var(--text-strong);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 700;
+}
+
+.gene-tooltip:hover {
+  background: rgba(56, 189, 248, 0.35);
+}
+
+.gene-warning {
+  border-radius: 1.25rem;
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--text-strong);
+  font-size: 0.85rem;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 10px 30px rgba(248, 113, 113, 0.25);
+}
+
 button:hover,
 .btn:hover,
 .button-link:hover {

@@ -127,13 +127,21 @@
                                         <?php if (!empty($gene['is_reference'])): ?>
                                             <span class="badge badge-pattern" style="margin-left:0.5rem;">Referenz</span>
                                         <?php endif; ?>
-                                        <?php if (isset($gene['slug']) && strtolower($gene['slug']) === 'skullface'): ?>
+                                        <?php if (!empty($gene['advisory'])): ?>
                                             <div class="skullface-warning" role="alert">
-                                                <strong>Warnung:</strong> Skullface gilt als Qualzucht und wird im Nova CMS nicht geduldet. Bitte verzichte auf die Zucht sowie Bewerbung dieser Linie.
+                                                <strong><?= htmlspecialchars($gene['advisory']['title'] ?? 'Warnung') ?>:</strong>
+                                                <span><?= htmlspecialchars($gene['advisory']['message'] ?? '') ?></span>
                                             </div>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?= htmlspecialchars($gene['shorthand'] ?? '') ?></td>
+                                    <td>
+                                        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+                                            <span><?= htmlspecialchars($gene['shorthand'] ?? '') ?></span>
+                                            <?php if (!empty($gene['inheritance_hint'])): ?>
+                                                <button type="button" class="gene-tooltip" title="<?= htmlspecialchars($gene['inheritance_hint']) ?>" aria-label="Genetischer Hinweis">?</button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
                                     <td>
                                         <?php
                                             $modeLabels = [
@@ -145,11 +153,14 @@
                                         <?= htmlspecialchars($modeLabels[$gene['inheritance_mode']] ?? $gene['inheritance_mode']) ?>
                                     </td>
                                     <td>
-                                        <?php if (!empty($gene['originator'])): ?>
+                                        <?php if (!empty($gene['display_origin'])): ?>
+                                            <div><?= htmlspecialchars($gene['display_origin']) ?></div>
+                                        <?php elseif (!empty($gene['originator'])): ?>
                                             <div><?= htmlspecialchars($gene['originator']) ?></div>
                                         <?php endif; ?>
-                                        <?php if (!empty($gene['origin_url'])): ?>
-                                            <a href="<?= htmlspecialchars($gene['origin_url']) ?>" class="text-xs" target="_blank" rel="noopener">Quelle öffnen</a>
+                                        <?php $originUrl = $gene['display_origin_url'] ?? $gene['origin_url'] ?? null; ?>
+                                        <?php if (!empty($originUrl)): ?>
+                                            <a href="<?= htmlspecialchars($originUrl) ?>" class="text-xs" target="_blank" rel="noopener">Quelle öffnen</a>
                                         <?php endif; ?>
                                     </td>
                                     <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
