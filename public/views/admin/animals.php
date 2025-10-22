@@ -183,18 +183,6 @@
                                                 ]))),
                                             ];
                                         }
-                                        $normalDisplay = $normalLabel !== '' ? $normalLabel : ($geneName ?: 'Wildtyp');
-                                        $displayStates[] = [
-                                            'key' => 'normal',
-                                            'label' => $normalLabel !== '' ? $normalLabel : ($geneName ?: 'Wildtyp'),
-                                            'display' => $normalDisplay,
-                                            'tokens' => array_values(array_filter(array_unique([
-                                                $geneName,
-                                                $gene['shorthand'] ?? '',
-                                                $normalLabel,
-                                                $normalDisplay,
-                                            ]))),
-                                        ];
                                         $payload[] = [
                                             'slug' => $geneSlug,
                                             'name' => $geneName,
@@ -205,8 +193,10 @@
                                         }
                                     }
                                 }
+                                $jsonPayload = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                                $encodedPayload = base64_encode($jsonPayload !== false ? $jsonPayload : '[]');
                             ?>
-                            <div class="gene-selector-admin__species" data-animal-gene-group data-species-genes="<?= htmlspecialchars($species['slug']) ?>" data-gene-payload='<?= htmlspecialchars(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>' data-selected='<?= htmlspecialchars(json_encode($isActive ? $selectedStates : [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>' <?= $isActive ? '' : 'hidden' ?>>
+                            <div class="gene-selector-admin__species" data-animal-gene-group data-species-genes="<?= htmlspecialchars($species['slug']) ?>" data-gene-payload='<?= htmlspecialchars($jsonPayload !== false ? $jsonPayload : '[]', ENT_QUOTES, 'UTF-8') ?>' data-gene-payload-b64="<?= htmlspecialchars($encodedPayload, ENT_QUOTES, 'UTF-8') ?>" data-selected='<?= htmlspecialchars(json_encode($isActive ? $selectedStates : [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>' <?= $isActive ? '' : 'hidden' ?>>
                                 <?php if (empty($genes)): ?>
                                     <p class="form-hint">Für diese Art wurden noch keine Gene gepflegt. <a href="<?= BASE_URL ?>/index.php?route=admin/genetics&amp;species=<?= urlencode($species['slug']) ?>">Jetzt anlegen</a>.</p>
                                 <?php else: ?>
@@ -261,25 +251,4 @@
     </div>
 </div>
 </section>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const speciesSelect = document.querySelector('[data-species-select]');
-        if (!speciesSelect) {
-            return;
-        }
-        const groups = document.querySelectorAll('[data-species-genes]');
-        const toggleGroups = () => {
-            const activeSlug = speciesSelect.value;
-            groups.forEach(group => {
-                const isActive = group.dataset.speciesGenes === activeSlug && activeSlug !== '';
-                group.hidden = !isActive;
-                group.querySelectorAll('select').forEach(select => {
-                    select.disabled = !isActive;
-                });
-            });
-        };
-        speciesSelect.addEventListener('change', toggleGroups);
-        toggleGroups();
-    });
-</script>
 <?php include __DIR__ . '/../partials/footer.php'; ?>
