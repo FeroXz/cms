@@ -28,4 +28,7 @@
 - [x] Admin-Dashboard als React-„Mission Control“ mit Tailwind-Komponenten und dynamischen Schnellzugriffen umgesetzt.
 - [x] Kosmisches „Nova Horizon“-Frontend mit dunklem Gradient-Design, neonartigen Karten und neu strukturiertem Hero-Bereich ausgerollt.
 - [x] Nova-Suite im Admin mit Navigations-Builder, Layout-Blaupausen, Mediathek, globalen Meta-Einstellungen und Aktivitätsprotokoll ergänzt.
-- [x] Globale Version 5.0 samt Meta-Description-Steuerung und Social-Vorschau-Verwaltung eingeführt, inklusive Umschalter zum Deaktivieren aller neuen Nova-Funktionen.
+- [x] Lesbarkeit und Kontrast im gesamten Nova-Frontend überarbeitet – hellere Typografie, klarere Tabellen und besser unterscheidbare Formularhinweise.
+- [x] Tier- und Adoptionsformulare bieten jetzt eine texteingabebasierte Genetik-Auswahl mit Vorschlägen und Wildtyp-Handling analog zum Genetikrechner.
+- [x] Repository-Struktur bereinigt und das CMS direkt ins Hauptverzeichnis verschoben, inklusive aktualisierter Build-Artefakte.
+- [x] Globale Version 5.1 samt Meta-Description-Steuerung und Social-Vorschau-Verwaltung eingeführt, inklusive Umschalter zum Deaktivieren aller neuen Nova-Funktionen.
