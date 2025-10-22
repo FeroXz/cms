@@ -40,7 +40,7 @@
                     $fitMode = normalize_gallery_fit_mode($image['fit_mode'] ?? 'cover');
                     $figureStyle = sprintf('--gallery-fit:%s;', $fitMode);
                 ?>
-                <article class="gallery-card" tabindex="0">
+                <article class="gallery-card" tabindex="0" data-lightbox data-lightbox-src="<?= htmlspecialchars($image['image_path']) ?>" data-lightbox-title="<?= htmlspecialchars($image['title']) ?>" data-lightbox-caption="<?= htmlspecialchars($image['caption'] ?? '') ?>">
                     <figure class="gallery-card__figure" style="<?= $figureStyle ?>">
                         <img src="<?= htmlspecialchars($image['image_path']) ?>" alt="<?= htmlspecialchars($image['title']) ?>" loading="lazy">
                         <div class="gallery-card__overlay">
