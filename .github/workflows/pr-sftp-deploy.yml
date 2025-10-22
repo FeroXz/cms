@@ -1,11 +1,10 @@
-name: PR SFTP Deploy (lftp + zip)
+name: PR SFTP Deploy (zip, overwrite+delete to /cms)
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened]
     branches: [ main ]
 
-# Verhindert parallele Deploys je PR
 concurrency:
   group: pr-deploy-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -13,17 +12,16 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout PR head (nicht main)
+      - name: Checkout PR head
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Install tools (lftp, zip)
+      - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y lftp zip
+          sudo apt-get install -y lftp zip jq
 
       - name: Build ZIP artifact
         env:
@@ -33,19 +31,15 @@ jobs:
           SHORTSHA=${SHA:0:7}
           ZIPNAME="pr-${PRNUM}-${SHORTSHA}.zip"
           echo "ZIPNAME=$ZIPNAME" >> $GITHUB_ENV
-          zip -r "$ZIPNAME" . \
-            -x ".git/*" ".github/*" "node_modules/*" "**/*.map"
-
-          # Checksums (nützlich zum Verifizieren)
+          zip -r "$ZIPNAME" . -x ".git/*" ".github/*" "node_modules/*" "**/*.map"
           sha256sum "$ZIPNAME" | tee "${ZIPNAME}.sha256"
 
-      - name: Upload via SFTP (mirror + zip)
+      - name: Upload via SFTP (mirror to /cms + zip)
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_USER: ${{ secrets.SFTP_USER }}
           SFTP_PASS: ${{ secrets.SFTP_PASS }}
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
-          PRNUM: ${{ github.event.pull_request.number }}
           ZIPNAME: ${{ env.ZIPNAME }}
         run: |
           : "${SFTP_PORT:=22}"
@@ -53,32 +47,38 @@ jobs:
           set sftp:auto-confirm yes
           set net:max-retries 2
           set net:timeout 30
-
-          # Ordnerstruktur pro PR vorbereiten
-          mkdir -p /deploy/pr-${PRNUM}
-          mkdir -p /deploy/zips
-          cd /deploy
-
-          # Code inkrementell spiegeln
-          mirror -R --only-newer --parallel=4 \
+          mkdir -p /cms
+          mkdir -p /cms/zips
+          # Spiegeln nach /cms: geänderte Dateien überschreiben UND entfernte Dateien löschen
+          mirror -R --parallel=4 --overwrite --delete \
             --exclude-glob .git* \
             --exclude-glob .github/* \
             --exclude-glob node_modules/* \
             --exclude-glob **/*.map \
-            ./ pr-${PRNUM}/
-
-          # ZIP & Checksum hochladen
-          put -O zips/ "${ZIPNAME}"
-          put -O zips/ "${ZIPNAME}.sha256"
+            ./ /cms/
+          # ZIP + Checksum ablegen
+          put -O /cms/zips/ "${ZIPNAME}"
+          put -O /cms/zips/ "${ZIPNAME}.sha256"
           bye
           EOF
 
-      - name: Summary
+      - name: Comment on PR with deploy info
         env:
-          PRNUM: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ZIPNAME: ${{ env.ZIPNAME }}
           HOST: ${{ secrets.SFTP_HOST }}
         run: |
-          echo "### ✅ Deploy fertig" >> $GITHUB_STEP_SUMMARY
-          echo "- Ziel (Code): \`sftp://${HOST}/deploy/pr-${PRNUM}/\`" >> $GITHUB_STEP_SUMMARY
-          echo "- ZIP: \`sftp://${HOST}/deploy/zips/${ZIPNAME}\`" >> $GITHUB_STEP_SUMMARY
+          COMMENT="✅ **Deploy auf \`/cms\` (mit --delete)**
+          \n📁 Code: \`sftp://${HOST}/cms/\`
+          \n📦 ZIP: \`sftp://${HOST}/cms/zips/${ZIPNAME}\`
+          \n🔑 Commit: \`${GITHUB_SHA:0:7}\`"
+          gh pr comment "$GITHUB_REF_NAME" --body "$COMMENT" || gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT"
+
+      - name: Summary
+        env:
+          HOST: ${{ secrets.SFTP_HOST }}
+          ZIPNAME: ${{ env.ZIPNAME }}
+        run: |
+          echo "### ✅ Deploy fertig (mit --delete)" >> $GITHUB_STEP_SUMMARY
+          echo "- Code: \`sftp://${HOST}/cms/\`" >> $GITHUB_STEP_SUMMARY
+          echo "- ZIP:  \`sftp://${HOST}/cms/zips/${ZIPNAME}\`" >> $GITHUB_STEP_SUMMARY
