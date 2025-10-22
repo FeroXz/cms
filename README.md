@@ -39,3 +39,7 @@
 - [x] Geneinträge werden um externe Quellen, Tags und eindringliche Wobble-/Skullface-Hinweise erweitert, um verantwortungsvolle Entscheidungen zu erleichtern.
 - [x] Autocomplete-Vorschläge in Tier- und Adoptionsverwaltung transportieren nun direkte Inheritance-Hints je Gen.
 - [x] Globale Version 5.3 mit erweitertem Morph-Metadaten-Layer und aktualisiertem Nova-Footer veröffentlicht.
+- [x] Ember-inspirierte Dark-UI mit orangefarbenen Akzenten für Buttons, Karten, Modals und Badges im gesamten CMS.
+- [x] Mediathek-Uploads nutzen eine Drag-&-Drop-Dropzone mit Fortschrittsanzeige und Lightbox-Vorschau für Galerie-Bilder.
+- [x] Tierverwaltung stellt den Bestand als filter- und sortierbare Datentabelle mit Volltextsuche und Statusfiltern dar.
+- [x] Öffentliche Galerie und Admin-Bereich setzen neue Toasts für Systemmeldungen sowie die universelle Lightbox-Komponente ein.

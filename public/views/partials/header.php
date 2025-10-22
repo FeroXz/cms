@@ -28,9 +28,9 @@
                     },
                     colors: {
                         midnight: '#0f172a',
-                        aurora: '#38bdf8',
-                        cosmic: '#a855f7',
-                        ember: '#f97316',
+                        aurora: '#f97316',
+                        cosmic: '#fb923c',
+                        ember: '#ea580c',
                     },
                     boxShadow: {
                         horizon: '0 30px 120px rgba(15, 23, 42, 0.45)',

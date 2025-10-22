@@ -16,6 +16,7 @@
         </div>
     </div>
 </footer>
+<script src="<?= asset('ui.js') ?>" defer></script>
 <script>
     (function () {
         const mobileToggle = document.querySelector('[data-mobile-nav-toggle]');
