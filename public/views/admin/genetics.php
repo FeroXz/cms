@@ -127,6 +127,11 @@
                                         <?php if (!empty($gene['is_reference'])): ?>
                                             <span class="badge badge-pattern" style="margin-left:0.5rem;">Referenz</span>
                                         <?php endif; ?>
+                                        <?php if (isset($gene['slug']) && strtolower($gene['slug']) === 'skullface'): ?>
+                                            <div class="skullface-warning" role="alert">
+                                                <strong>Warnung:</strong> Skullface gilt als Qualzucht und wird im Nova CMS nicht geduldet. Bitte verzichte auf die Zucht sowie Bewerbung dieser Linie.
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                     <td><?= htmlspecialchars($gene['shorthand'] ?? '') ?></td>
                                     <td>
@@ -217,6 +222,11 @@
                         <label>Beschreibung
                             <textarea name="description" rows="4"><?= htmlspecialchars($editGene['description'] ?? '') ?></textarea>
                         </label>
+                        <?php if ($editGene && isset($editGene['slug']) && strtolower($editGene['slug']) === 'skullface'): ?>
+                            <div class="skullface-warning" role="alert">
+                                <strong>Keine Unterstützung:</strong> Skullface wird als Qualzucht eingestuft. Entferne dieses Gen aus deinen Beständen und veröffentliche es nicht im CMS.
+                            </div>
+                        <?php endif; ?>
                         <button type="submit">Speichern</button>
                     </form>
                 <?php endif; ?>

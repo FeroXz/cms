@@ -31,4 +31,7 @@
 - [x] Lesbarkeit und Kontrast im gesamten Nova-Frontend überarbeitet – hellere Typografie, klarere Tabellen und besser unterscheidbare Formularhinweise.
 - [x] Tier- und Adoptionsformulare bieten jetzt eine texteingabebasierte Genetik-Auswahl mit Vorschlägen und Wildtyp-Handling analog zum Genetikrechner.
 - [x] Repository-Struktur bereinigt und das CMS direkt ins Hauptverzeichnis verschoben, inklusive aktualisierter Build-Artefakte.
-- [x] Globale Version 5.1 samt Meta-Description-Steuerung und Social-Vorschau-Verwaltung eingeführt, inklusive Umschalter zum Deaktivieren aller neuen Nova-Funktionen.
+- [x] Tier- und Adoptionsverwaltung nutzt eine stabilisierte Gen-Suche, die Vorschläge sicher aus Base64 lädt und nur noch „het“ bzw. homozygote Zustände anbietet.
+- [x] Skullface wird im Genetikbereich als Qualzucht markiert und mit deutlich sichtbaren Warnhinweisen in Listen sowie Formularen gekennzeichnet.
+- [x] Nova-Theme-Kontraste für Panels, Formulare und Hinweise erneut angehoben, damit Texte auf dunklem Hintergrund klar lesbar bleiben.
+- [x] Globale Version 5.2 samt Meta-Description-Steuerung und Social-Vorschau-Verwaltung eingeführt, inklusive Umschalter zum Deaktivieren aller neuen Nova-Funktionen.
