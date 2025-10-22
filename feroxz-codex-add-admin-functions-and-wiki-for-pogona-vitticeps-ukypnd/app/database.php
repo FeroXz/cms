@@ -250,4 +250,72 @@ function initialize_database(PDO $pdo): void
     if (!in_array('focus_y', $galleryColumnNames, true)) {
         $pdo->exec('ALTER TABLE gallery_images ADD COLUMN focus_y INTEGER NOT NULL DEFAULT 50');
     }
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS media_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        alt_text TEXT,
+        description TEXT,
+        uploaded_by TEXT,
+        uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )');
+
+    $mediaColumns = $pdo->query('PRAGMA table_info(media_items)')->fetchAll();
+    $mediaColumnNames = array_column($mediaColumns, 'name');
+    if (!in_array('uploaded_by', $mediaColumnNames, true)) {
+        $pdo->exec('ALTER TABLE media_items ADD COLUMN uploaded_by TEXT');
+    }
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS menus (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        description TEXT,
+        is_primary INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS menu_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        menu_id INTEGER NOT NULL,
+        parent_id INTEGER,
+        label TEXT NOT NULL,
+        url TEXT,
+        page_slug TEXT,
+        open_in_new_tab INTEGER NOT NULL DEFAULT 0,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(menu_id) REFERENCES menus(id) ON DELETE CASCADE,
+        FOREIGN KEY(parent_id) REFERENCES menu_items(id) ON DELETE CASCADE
+    )');
+
+    $menuItemColumns = $pdo->query('PRAGMA table_info(menu_items)')->fetchAll();
+    $menuItemColumnNames = array_column($menuItemColumns, 'name');
+    if (!in_array('position', $menuItemColumnNames, true)) {
+        $pdo->exec('ALTER TABLE menu_items ADD COLUMN position INTEGER NOT NULL DEFAULT 0');
+    }
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS layout_blueprints (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        description TEXT,
+        definition TEXT NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS cms_activity_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        actor TEXT,
+        action TEXT NOT NULL,
+        context TEXT,
+        details TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )');
 }
