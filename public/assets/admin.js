@@ -77,6 +77,34 @@
             .toLowerCase();
     }
 
+    function decodeGenePayload(root) {
+        if (!root) {
+            return [];
+        }
+
+        const encoded = root.dataset.genePayloadB64;
+        if (encoded && typeof atob === 'function') {
+            try {
+                const json = atob(encoded);
+                return JSON.parse(json);
+            } catch (error) {
+                console.warn('Gene payload konnte nicht aus Base64 dekodiert werden.', error);
+            }
+        }
+
+        const raw = root.dataset.genePayload;
+        if (!raw) {
+            return [];
+        }
+
+        try {
+            return JSON.parse(raw);
+        } catch (error) {
+            console.warn('Gene payload konnte nicht aus JSON geparst werden.', error);
+            return [];
+        }
+    }
+
     class AdminGeneSelector {
         constructor(root) {
             this.root = root;
@@ -91,7 +119,7 @@
             this.currentSuggestions = [];
             this.selections = new Map();
 
-            const payload = this.parseJSON(root.dataset.genePayload) || [];
+            const payload = decodeGenePayload(root);
             this.enabled = Array.isArray(payload) && payload.length > 0 && this.input && this.tagContainer && this.hiddenInputs;
 
             if (this.enabled) {
@@ -102,7 +130,12 @@
                         if (!state || !state.key) {
                             return;
                         }
-                        stateEntries.set(state.key, state);
+                        const selectable = state.key !== 'normal';
+                        const enhancedState = Object.assign({ selectable }, state);
+                        stateEntries.set(state.key, enhancedState);
+                        if (!selectable) {
+                            return;
+                        }
                         const tokens = Array.isArray(state.tokens) ? state.tokens : [];
                         const normalizedTokens = tokens
                             .filter(Boolean)
@@ -172,9 +205,6 @@
                     }
                     const matches = this.searchIndex.filter((entry) => {
                         if (!entry.tokens.length) {
-                            return false;
-                        }
-                        if (entry.stateKey === 'normal' && !this.selections.has(entry.geneSlug)) {
                             return false;
                         }
                         if (entry.stateKey !== 'normal' && this.selections.get(entry.geneSlug) === entry.stateKey) {
