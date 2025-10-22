@@ -4,7 +4,7 @@
     <div class="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(168,85,247,0.18),transparent_60%)]"></div>
     <div class="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 text-sm text-white/70 sm:flex-row sm:items-center sm:justify-between">
         <div class="max-w-2xl space-y-2">
-            <p class="text-xs font-semibold uppercase tracking-[0.4em] text-aurora/70"><?= htmlspecialchars($settings['cms_version'] ?? '5.0') ?> Nova</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.4em] text-aurora/70"><?= htmlspecialchars($settings['cms_version'] ?? '5.1') ?> Nova</p>
             <div class="text-sm leading-relaxed text-white/80">
                 <?= nl2br(htmlspecialchars($settings['footer_text'] ?? '')) ?>
             </div>
