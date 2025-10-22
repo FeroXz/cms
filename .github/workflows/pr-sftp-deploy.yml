@@ -1,0 +1,84 @@
+name: PR SFTP Deploy (lftp + zip)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [ main ]
+
+# Verhindert parallele Deploys je PR
+concurrency:
+  group: pr-deploy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR head (nicht main)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install tools (lftp, zip)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lftp zip
+
+      - name: Build ZIP artifact
+        env:
+          PRNUM: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          SHORTSHA=${SHA:0:7}
+          ZIPNAME="pr-${PRNUM}-${SHORTSHA}.zip"
+          echo "ZIPNAME=$ZIPNAME" >> $GITHUB_ENV
+          zip -r "$ZIPNAME" . \
+            -x ".git/*" ".github/*" "node_modules/*" "**/*.map"
+
+          # Checksums (nützlich zum Verifizieren)
+          sha256sum "$ZIPNAME" | tee "${ZIPNAME}.sha256"
+
+      - name: Upload via SFTP (mirror + zip)
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_PASS: ${{ secrets.SFTP_PASS }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          PRNUM: ${{ github.event.pull_request.number }}
+          ZIPNAME: ${{ env.ZIPNAME }}
+        run: |
+          : "${SFTP_PORT:=22}"
+          lftp -u "$SFTP_USER","$SFTP_PASS" sftp://$SFTP_HOST:$SFTP_PORT << 'EOF'
+          set sftp:auto-confirm yes
+          set net:max-retries 2
+          set net:timeout 30
+
+          # Ordnerstruktur pro PR vorbereiten
+          mkdir -p /deploy/pr-${PRNUM}
+          mkdir -p /deploy/zips
+          cd /deploy
+
+          # Code inkrementell spiegeln
+          mirror -R --only-newer --parallel=4 \
+            --exclude-glob .git* \
+            --exclude-glob .github/* \
+            --exclude-glob node_modules/* \
+            --exclude-glob **/*.map \
+            ./ pr-${PRNUM}/
+
+          # ZIP & Checksum hochladen
+          put -O zips/ "${ZIPNAME}"
+          put -O zips/ "${ZIPNAME}.sha256"
+          bye
+          EOF
+
+      - name: Summary
+        env:
+          PRNUM: ${{ github.event.pull_request.number }}
+          ZIPNAME: ${{ env.ZIPNAME }}
+          HOST: ${{ secrets.SFTP_HOST }}
+        run: |
+          echo "### ✅ Deploy fertig" >> $GITHUB_STEP_SUMMARY
+          echo "- Ziel (Code): \`sftp://${HOST}/deploy/pr-${PRNUM}/\`" >> $GITHUB_STEP_SUMMARY
+          echo "- ZIP: \`sftp://${HOST}/deploy/zips/${ZIPNAME}\`" >> $GITHUB_STEP_SUMMARY
