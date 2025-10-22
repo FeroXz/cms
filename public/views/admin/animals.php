@@ -68,10 +68,15 @@
         <?php
             $currentSpeciesSlug = $editAnimal['species_slug'] ?? ($speciesList[0]['slug'] ?? null);
             $ageParts = $editAnimal['age_parts'] ?? parse_partial_date($editAnimal['age'] ?? null);
-            $currentGeneStates = $editAnimal['gene_states'] ?? [];
+            $currentGeneStates = [];
+            foreach (($editAnimal['gene_states'] ?? []) as $geneSlug => $stateKey) {
+                if (in_array($stateKey, ['heterozygous', 'homozygous'], true)) {
+                    $currentGeneStates[$geneSlug] = $stateKey;
+                }
+            }
             $currentYear = (int)date('Y');
         ?>
-        <form method="post" enctype="multipart/form-data" class="admin-animal-form">
+        <form method="post" enctype="multipart/form-data" class="admin-animal-form" data-gene-form>
             <?= csrf_field() ?>
             <?php if ($editAnimal): ?>
                 <input type="hidden" name="id" value="<?= (int)$editAnimal['id'] ?>">
@@ -132,37 +137,90 @@
                 <legend>Genetik</legend>
                 <?php if (empty($speciesList)): ?>
                     <p class="form-hint">Gene werden verfügbar, sobald eine Art ausgewählt werden kann.</p>
-                <?php endif; ?>
-                <?php if (!empty($speciesList)): ?>
-                    <?php foreach ($speciesList as $species): ?>
-                        <?php
-                            $isActive = $currentSpeciesSlug === $species['slug'];
-                            $genes = $speciesGenes[$species['slug']] ?? [];
-                        ?>
-                        <div class="gene-group" data-species-genes="<?= htmlspecialchars($species['slug']) ?>" <?= $isActive ? '' : 'hidden' ?>>
-                            <?php if (empty($genes)): ?>
-                                <p class="form-hint">Für diese Art wurden noch keine Gene gepflegt. <a href="<?= BASE_URL ?>/index.php?route=admin/genetics&amp;species=<?= urlencode($species['slug']) ?>">Jetzt anlegen</a>.</p>
-                            <?php else: ?>
-                                <?php foreach ($genes as $gene): ?>
-                                    <?php
-                                        $state = $currentGeneStates[$gene['slug']] ?? '';
-                                        $normalLabel = $gene['normal_label'] ?: ($gene['name'] . ' (Wildtyp)');
-                                        $heteroLabel = $gene['heterozygous_label'] ?: ($gene['name'] . ' (het)');
-                                        $homoLabel = $gene['homozygous_label'] ?: ($gene['name'] . ' (hom)');
-                                    ?>
-                                    <label class="gene-select">
-                                        <span><?= htmlspecialchars($gene['name']) ?></span>
-                                        <select name="gene_states[<?= htmlspecialchars($gene['slug']) ?>]" <?= $isActive ? '' : 'disabled' ?>>
-                                            <option value="">Nicht festgelegt</option>
-                                            <option value="normal" <?= ($state === 'normal') ? 'selected' : '' ?>><?= htmlspecialchars($normalLabel) ?></option>
-                                            <option value="heterozygous" <?= ($state === 'heterozygous') ? 'selected' : '' ?>><?= htmlspecialchars($heteroLabel) ?></option>
-                                            <option value="homozygous" <?= ($state === 'homozygous') ? 'selected' : '' ?>><?= htmlspecialchars($homoLabel) ?></option>
-                                        </select>
-                                    </label>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </div>
-                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="form-hint">Tippe den Morph oder Trägerstatus (z.&nbsp;B. „Het Hypo“). Vorschläge erscheinen automatisch, die Auswahl lässt sich jederzeit entfernen.</p>
+                    <div class="gene-selector-admin" data-gene-selector-root>
+                        <?php foreach ($speciesList as $species): ?>
+                            <?php
+                                $isActive = $currentSpeciesSlug === $species['slug'];
+                                $genes = $speciesGenes[$species['slug']] ?? [];
+                                $payload = [];
+                                $selectedStates = [];
+                                if (!empty($genes)) {
+                                    foreach ($genes as $gene) {
+                                        $geneSlug = $gene['slug'];
+                                        $displayStates = [];
+                                        $geneName = $gene['name'] ?? '';
+                                        $normalLabel = trim((string)($gene['normal_label'] ?? '')) ?: ($geneName ?: '');
+                                        $heteroLabel = trim((string)($gene['heterozygous_label'] ?? ''));
+                                        $homoLabel = trim((string)($gene['homozygous_label'] ?? '')) ?: ($geneName ?: '');
+                                        if ($heteroLabel !== '' || $geneName !== '') {
+                                            $heteroDisplay = trim(($normalLabel !== '' ? $normalLabel . ' ' : '') . ($heteroLabel !== '' ? $heteroLabel : ($geneName ? 'het ' . $geneName : '')));
+                                            $displayStates[] = [
+                                                'key' => 'heterozygous',
+                                                'label' => $heteroLabel !== '' ? $heteroLabel : ($geneName ? 'het ' . $geneName : ''),
+                                                'display' => $heteroDisplay,
+                                                'tokens' => array_values(array_filter(array_unique([
+                                                    $geneName,
+                                                    $gene['shorthand'] ?? '',
+                                                    $heteroLabel,
+                                                    $normalLabel,
+                                                    $heteroDisplay,
+                                                ]))),
+                                            ];
+                                        }
+                                        if ($homoLabel !== '' || $geneName !== '') {
+                                            $homoDisplay = $homoLabel !== '' ? $homoLabel : $geneName;
+                                            $displayStates[] = [
+                                                'key' => 'homozygous',
+                                                'label' => $homoLabel !== '' ? $homoLabel : $geneName,
+                                                'display' => $homoDisplay,
+                                                'tokens' => array_values(array_filter(array_unique([
+                                                    $geneName,
+                                                    $gene['shorthand'] ?? '',
+                                                    $homoLabel,
+                                                    $homoDisplay,
+                                                ]))),
+                                            ];
+                                        }
+                                        $normalDisplay = $normalLabel !== '' ? $normalLabel : ($geneName ?: 'Wildtyp');
+                                        $displayStates[] = [
+                                            'key' => 'normal',
+                                            'label' => $normalLabel !== '' ? $normalLabel : ($geneName ?: 'Wildtyp'),
+                                            'display' => $normalDisplay,
+                                            'tokens' => array_values(array_filter(array_unique([
+                                                $geneName,
+                                                $gene['shorthand'] ?? '',
+                                                $normalLabel,
+                                                $normalDisplay,
+                                            ]))),
+                                        ];
+                                        $payload[] = [
+                                            'slug' => $geneSlug,
+                                            'name' => $geneName,
+                                            'states' => $displayStates,
+                                        ];
+                                        if (isset($currentGeneStates[$geneSlug])) {
+                                            $selectedStates[$geneSlug] = $currentGeneStates[$geneSlug];
+                                        }
+                                    }
+                                }
+                            ?>
+                            <div class="gene-selector-admin__species" data-animal-gene-group data-species-genes="<?= htmlspecialchars($species['slug']) ?>" data-gene-payload='<?= htmlspecialchars(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>' data-selected='<?= htmlspecialchars(json_encode($isActive ? $selectedStates : [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>' <?= $isActive ? '' : 'hidden' ?>>
+                                <?php if (empty($genes)): ?>
+                                    <p class="form-hint">Für diese Art wurden noch keine Gene gepflegt. <a href="<?= BASE_URL ?>/index.php?route=admin/genetics&amp;species=<?= urlencode($species['slug']) ?>">Jetzt anlegen</a>.</p>
+                                <?php else: ?>
+                                    <div class="gene-selector-admin__tags" data-tag-container></div>
+                                    <div class="gene-selector-admin__input">
+                                        <input type="text" placeholder="Gen oder Bezeichnung eingeben …" data-input <?= $isActive ? '' : 'disabled' ?>>
+                                        <button type="button" class="btn btn-secondary" data-clear>Zurücksetzen</button>
+                                    </div>
+                                    <div class="gene-selector-admin__suggestions" data-suggestions hidden></div>
+                                    <div data-hidden-inputs></div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
             </fieldset>
             <label>Herkunft

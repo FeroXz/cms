@@ -650,12 +650,7 @@ switch ($route) {
 
             $geneStates = [];
             if (isset($_POST['gene_states']) && is_array($_POST['gene_states'])) {
-                foreach ($_POST['gene_states'] as $slug => $state) {
-                    if (!is_string($slug) || !is_string($state)) {
-                        continue;
-                    }
-                    $geneStates[$slug] = trim($state);
-                }
+                $geneStates = normalize_gene_state_selection($_POST['gene_states']);
             }
 
             $data = [
@@ -750,7 +745,7 @@ switch ($route) {
             if (!empty($editAnimal['genetics_profile'])) {
                 $decodedProfile = json_decode($editAnimal['genetics_profile'], true);
                 if (is_array($decodedProfile)) {
-                    $editAnimal['gene_states'] = $decodedProfile;
+                    $editAnimal['gene_states'] = normalize_gene_state_selection($decodedProfile);
                 }
             }
         }
@@ -919,12 +914,7 @@ switch ($route) {
 
             $geneStates = [];
             if (isset($_POST['gene_states']) && is_array($_POST['gene_states'])) {
-                foreach ($_POST['gene_states'] as $slug => $state) {
-                    if (!is_string($slug) || !is_string($state)) {
-                        continue;
-                    }
-                    $geneStates[$slug] = trim($state);
-                }
+                $geneStates = normalize_gene_state_selection($_POST['gene_states']);
             }
 
             $data = [
@@ -1012,7 +1002,7 @@ switch ($route) {
             if (!empty($editListing['genetics_profile'])) {
                 $decodedProfile = json_decode($editListing['genetics_profile'], true);
                 if (is_array($decodedProfile)) {
-                    $editListing['gene_states'] = $decodedProfile;
+                    $editListing['gene_states'] = normalize_gene_state_selection($decodedProfile);
                 }
             }
         }
