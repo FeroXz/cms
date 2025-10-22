@@ -1,11 +1,15 @@
     </div>
 </main>
-<footer class="border-t border-slate-200 bg-white py-10">
-    <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-        <div class="prose max-w-none text-slate-600">
-            <?= nl2br(htmlspecialchars($settings['footer_text'] ?? '')) ?>
+<footer class="relative border-t border-white/10 bg-slate-950/95 py-12">
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(168,85,247,0.18),transparent_60%)]"></div>
+    <div class="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 text-sm text-white/70 sm:flex-row sm:items-center sm:justify-between">
+        <div class="max-w-2xl space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-[0.4em] text-aurora/70"><?= htmlspecialchars($settings['cms_version'] ?? '5.0') ?> Nova</p>
+            <div class="text-sm leading-relaxed text-white/80">
+                <?= nl2br(htmlspecialchars($settings['footer_text'] ?? '')) ?>
+            </div>
         </div>
-        <div class="flex items-center gap-3 text-xs text-slate-500">
+        <div class="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.3em] text-white/60">
             <span>© <?= date('Y') ?> <?= htmlspecialchars($settings['site_title'] ?? APP_NAME) ?></span>
             <span aria-hidden="true">•</span>
             <span><?= htmlspecialchars(content_value($settings, 'footer_rights')) ?></span>
@@ -17,38 +21,12 @@
         const mobileToggle = document.querySelector('[data-mobile-nav-toggle]');
         const mobilePanel = document.querySelector('[data-mobile-nav-panel]');
         if (mobileToggle && mobilePanel) {
+            mobilePanel.classList.add('hidden');
             mobileToggle.addEventListener('click', () => {
-                mobilePanel.classList.toggle('hidden');
-                const expanded = mobileToggle.getAttribute('aria-expanded') === 'true';
-                mobileToggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                const isHidden = mobilePanel.classList.toggle('hidden');
+                mobileToggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
             });
         }
-
-        document.querySelectorAll('[data-nav-group]').forEach((group) => {
-            const trigger = group.querySelector('[data-nav-trigger]');
-            const dropdown = group.querySelector('.nav-dropdown');
-            if (!trigger || !dropdown) {
-                return;
-            }
-            trigger.setAttribute('aria-haspopup', 'true');
-            trigger.setAttribute('aria-expanded', 'false');
-            trigger.addEventListener('click', (event) => {
-                event.preventDefault();
-                const isOpen = dropdown.classList.toggle('open');
-                trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            });
-            group.addEventListener('mouseleave', () => {
-                dropdown.classList.remove('open');
-                trigger.setAttribute('aria-expanded', 'false');
-            });
-            group.addEventListener('keyup', (event) => {
-                if (event.key === 'Escape') {
-                    dropdown.classList.remove('open');
-                    trigger.setAttribute('aria-expanded', 'false');
-                    trigger.focus();
-                }
-            });
-        });
     })();
 </script>
 <?php if (($currentRoute ?? '') === 'genetics'): ?>
