@@ -125,6 +125,7 @@
             if (this.enabled) {
                 payload.forEach((gene) => {
                     const geneSlug = gene.slug;
+                    const inheritanceHint = gene.inheritance_hint || '';
                     const stateEntries = new Map();
                     (gene.states || []).forEach((state) => {
                         if (!state || !state.key) {
@@ -149,6 +150,7 @@
                             stateKey: state.key,
                             stateLabel: state.label || '',
                             stateDisplay: state.display || state.label || gene.name || '',
+                            inheritanceHint,
                             tokens: Array.from(new Set(normalizedTokens.filter(Boolean))),
                         });
                     });
@@ -357,6 +359,9 @@
                 button.appendChild(strong);
                 if (entry.geneName) {
                     button.appendChild(meta);
+                }
+                if (entry.inheritanceHint) {
+                    button.title = entry.inheritanceHint;
                 }
                 button.addEventListener('click', () => {
                     this.applySuggestion(entry);

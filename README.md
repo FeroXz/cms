@@ -35,3 +35,7 @@
 - [x] Skullface wird im Genetikbereich als Qualzucht markiert und mit deutlich sichtbaren Warnhinweisen in Listen sowie Formularen gekennzeichnet.
 - [x] Nova-Theme-Kontraste für Panels, Formulare und Hinweise erneut angehoben, damit Texte auf dunklem Hintergrund klar lesbar bleiben.
 - [x] Globale Version 5.2 samt Meta-Description-Steuerung und Social-Vorschau-Verwaltung eingeführt, inklusive Umschalter zum Deaktivieren aller neuen Nova-Funktionen.
+- [x] Genetikrechner-Karten zeigen Tooltips zu Vererbungsarten, Referenzbilder aus MorphMarket/Hognose-Datenbanken sowie Warnboxen für problematische Gene.
+- [x] Geneinträge werden um externe Quellen, Tags und eindringliche Wobble-/Skullface-Hinweise erweitert, um verantwortungsvolle Entscheidungen zu erleichtern.
+- [x] Autocomplete-Vorschläge in Tier- und Adoptionsverwaltung transportieren nun direkte Inheritance-Hints je Gen.
+- [x] Globale Version 5.3 mit erweitertem Morph-Metadaten-Layer und aktualisiertem Nova-Footer veröffentlicht.

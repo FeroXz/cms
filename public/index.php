@@ -172,6 +172,11 @@ switch ($route) {
         $genes = $selectedSpecies ? get_genetic_genes($pdo, (int)$selectedSpecies['id']) : [];
         $activeGenes = array_values(array_filter($genes, static fn($gene) => empty($gene['is_reference'])));
         $referenceGenes = array_values(array_filter($genes, static fn($gene) => !empty($gene['is_reference'])));
+        if ($selectedSpecies) {
+            $referenceMap = get_morph_reference_map();
+            $activeGenes = array_map(static fn($gene) => enrich_gene_metadata($gene, $selectedSlug, $referenceMap), $activeGenes);
+            $referenceGenes = array_map(static fn($gene) => enrich_gene_metadata($gene, $selectedSlug, $referenceMap), $referenceGenes);
+        }
         $parentSelections = [
             'parent1' => $_POST['parent1'] ?? [],
             'parent2' => $_POST['parent2'] ?? [],
@@ -1302,6 +1307,10 @@ switch ($route) {
             }
         }
         $genes = $selectedSpecies ? get_genetic_genes($pdo, (int)$selectedSpecies['id']) : [];
+        if ($selectedSpecies) {
+            $referenceMap = get_morph_reference_map();
+            $genes = array_map(static fn($gene) => enrich_gene_metadata($gene, $selectedSpecies['slug'], $referenceMap), $genes);
+        }
         $editGene = null;
         if (isset($_GET['edit_gene'])) {
             $editGene = get_genetic_gene($pdo, (int)$_GET['edit_gene']);

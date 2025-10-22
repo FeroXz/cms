@@ -187,6 +187,7 @@
                                             'slug' => $geneSlug,
                                             'name' => $geneName,
                                             'states' => $displayStates,
+                                            'inheritance_hint' => $gene['inheritance_hint'] ?? null,
                                         ];
                                         if (isset($currentGeneStates[$geneSlug])) {
                                             $selectedStates[$geneSlug] = $currentGeneStates[$geneSlug];

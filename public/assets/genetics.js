@@ -38,6 +38,7 @@
                 stateLabel: state.label,
                 geneName: gene.name,
                 display: `${state.label} – ${gene.name}`,
+                inheritanceHint: gene.inheritanceHint || '',
                 tokens: Array.from(new Set(normalizedTokens)),
             });
         });
@@ -157,6 +158,9 @@
             button.type = 'button';
             button.className = 'gene-suggestion';
             button.innerHTML = `<strong>${entry.stateLabel}</strong><span>${entry.geneName}</span>`;
+            if (entry.inheritanceHint) {
+                button.title = entry.inheritanceHint;
+            }
             button.addEventListener('click', () => {
                 selections[parentKey].set(entry.geneId, entry.stateKey);
                 renderTags(parentKey);
