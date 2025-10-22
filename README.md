@@ -24,3 +24,22 @@
 - [x] Galerie-Bilder unterstützen die Wahl des Bildmodus (Cover/Contain) für optimale Darstellung unterschiedlicher Formate.
 - [x] Galerie-Verwaltung verzichtet auf Fokus-Slider und setzt auf klare Moduswahl für den Bildausschnitt.
 - [x] Startseiten-Sektionen (Hero, Tiere, Adoption, News, Pflege) lassen sich im Admin gezielt ein- oder ausblenden.
+- [x] Admin-Dashboard als „Aurora Control Room“ mit komplett überarbeitetem Layout, Widgets und Farbwelt neu gestaltet.
+- [x] Admin-Dashboard als React-„Mission Control“ mit Tailwind-Komponenten und dynamischen Schnellzugriffen umgesetzt.
+- [x] Kosmisches „Nova Horizon“-Frontend mit dunklem Gradient-Design, neonartigen Karten und neu strukturiertem Hero-Bereich ausgerollt.
+- [x] Nova-Suite im Admin mit Navigations-Builder, Layout-Blaupausen, Mediathek, globalen Meta-Einstellungen und Aktivitätsprotokoll ergänzt.
+- [x] Lesbarkeit und Kontrast im gesamten Nova-Frontend überarbeitet – hellere Typografie, klarere Tabellen und besser unterscheidbare Formularhinweise.
+- [x] Tier- und Adoptionsformulare bieten jetzt eine texteingabebasierte Genetik-Auswahl mit Vorschlägen und Wildtyp-Handling analog zum Genetikrechner.
+- [x] Repository-Struktur bereinigt und das CMS direkt ins Hauptverzeichnis verschoben, inklusive aktualisierter Build-Artefakte.
+- [x] Tier- und Adoptionsverwaltung nutzt eine stabilisierte Gen-Suche, die Vorschläge sicher aus Base64 lädt und nur noch „het“ bzw. homozygote Zustände anbietet.
+- [x] Skullface wird im Genetikbereich als Qualzucht markiert und mit deutlich sichtbaren Warnhinweisen in Listen sowie Formularen gekennzeichnet.
+- [x] Nova-Theme-Kontraste für Panels, Formulare und Hinweise erneut angehoben, damit Texte auf dunklem Hintergrund klar lesbar bleiben.
+- [x] Globale Version 5.2 samt Meta-Description-Steuerung und Social-Vorschau-Verwaltung eingeführt, inklusive Umschalter zum Deaktivieren aller neuen Nova-Funktionen.
+- [x] Genetikrechner-Karten zeigen Tooltips zu Vererbungsarten, Referenzbilder aus MorphMarket/Hognose-Datenbanken sowie Warnboxen für problematische Gene.
+- [x] Geneinträge werden um externe Quellen, Tags und eindringliche Wobble-/Skullface-Hinweise erweitert, um verantwortungsvolle Entscheidungen zu erleichtern.
+- [x] Autocomplete-Vorschläge in Tier- und Adoptionsverwaltung transportieren nun direkte Inheritance-Hints je Gen.
+- [x] Globale Version 5.3 mit erweitertem Morph-Metadaten-Layer und aktualisiertem Nova-Footer veröffentlicht.
+- [x] Ember-inspirierte Dark-UI mit orangefarbenen Akzenten für Buttons, Karten, Modals und Badges im gesamten CMS.
+- [x] Mediathek-Uploads nutzen eine Drag-&-Drop-Dropzone mit Fortschrittsanzeige und Lightbox-Vorschau für Galerie-Bilder.
+- [x] Tierverwaltung stellt den Bestand als filter- und sortierbare Datentabelle mit Volltextsuche und Statusfiltern dar.
+- [x] Öffentliche Galerie und Admin-Bereich setzen neue Toasts für Systemmeldungen sowie die universelle Lightbox-Komponente ein.

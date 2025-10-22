@@ -31,7 +31,15 @@ switch ($route) {
         $listings = get_public_listings($pdo);
         $latestNews = get_latest_published_news($pdo, 3);
         $careHighlights = array_slice(get_published_care_articles($pdo), 0, 3);
-        view('home', compact('settings', 'animals', 'listings', 'latestNews', 'careHighlights'));
+        $layoutBlueprint = setting_enabled($settings, 'nova_features_enabled') ? get_active_layout_blueprint($pdo, $settings) : null;
+        $layoutDefinition = null;
+        if (!empty($layoutBlueprint['definition'])) {
+            $decodedDefinition = json_decode($layoutBlueprint['definition'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedDefinition)) {
+                $layoutDefinition = $decodedDefinition;
+            }
+        }
+        view('home', compact('settings', 'animals', 'listings', 'latestNews', 'careHighlights', 'layoutBlueprint', 'layoutDefinition'));
         break;
 
     case 'animals':
@@ -164,6 +172,11 @@ switch ($route) {
         $genes = $selectedSpecies ? get_genetic_genes($pdo, (int)$selectedSpecies['id']) : [];
         $activeGenes = array_values(array_filter($genes, static fn($gene) => empty($gene['is_reference'])));
         $referenceGenes = array_values(array_filter($genes, static fn($gene) => !empty($gene['is_reference'])));
+        if ($selectedSpecies) {
+            $referenceMap = get_morph_reference_map();
+            $activeGenes = array_map(static fn($gene) => enrich_gene_metadata($gene, $selectedSlug, $referenceMap), $activeGenes);
+            $referenceGenes = array_map(static fn($gene) => enrich_gene_metadata($gene, $selectedSlug, $referenceMap), $referenceGenes);
+        }
         $parentSelections = [
             'parent1' => $_POST['parent1'] ?? [],
             'parent2' => $_POST['parent2'] ?? [],
@@ -267,6 +280,193 @@ switch ($route) {
         }
         $flashSuccess = flash('success');
         view('admin/settings', compact('settings', 'flashSuccess'));
+        break;
+
+    case 'admin/cms':
+        require_login();
+        if (!is_authorized('can_manage_settings')) {
+            flash('error', 'Keine Berechtigung.');
+            redirect('admin/dashboard');
+        }
+        $settings = get_all_settings($pdo);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $action = $_POST['action'] ?? '';
+            switch ($action) {
+                case 'toggle_nova_features':
+                    require_csrf_token('admin/cms');
+                    $enabled = !empty($_POST['nova_features_enabled']);
+                    update_settings($pdo, ['nova_features_enabled' => $enabled ? '1' : '0']);
+                    log_cms_activity($pdo, $enabled ? 'nova_features_enabled' : 'nova_features_disabled');
+                    flash('success', $enabled ? 'Neue Funktionen aktiviert.' : 'Neue Funktionen deaktiviert.');
+                    redirect('admin/cms');
+                    break;
+                case 'save_menu_item':
+                    require_csrf_token('admin/cms');
+                    $menu = get_menu_by_slug($pdo, 'primary');
+                    if ($menu) {
+                        $itemId = !empty($_POST['id']) ? (int)$_POST['id'] : null;
+                        save_menu_item($pdo, (int)$menu['id'], $_POST, $itemId);
+                        log_cms_activity($pdo, $itemId ? 'menu_item_updated' : 'menu_item_created', [
+                            'context' => 'menu',
+                            'item' => $_POST['label'] ?? '',
+                        ]);
+                        flash('success', 'Navigation aktualisiert.');
+                    }
+                    redirect('admin/cms');
+                    break;
+                case 'delete_menu_item':
+                    require_csrf_token('admin/cms');
+                    $itemId = (int)($_POST['id'] ?? 0);
+                    if ($itemId) {
+                        delete_menu_item($pdo, $itemId);
+                        log_cms_activity($pdo, 'menu_item_deleted', [
+                            'context' => 'menu',
+                            'item_id' => $itemId,
+                        ]);
+                        flash('success', 'Navigationseintrag entfernt.');
+                    }
+                    redirect('admin/cms');
+                    break;
+                case 'upload_media':
+                    require_csrf_token('admin/cms');
+                    $title = trim($_POST['title'] ?? '');
+                    $file = $_FILES['file'] ?? null;
+                    $path = $file ? handle_upload($file) : null;
+                    if ($title !== '' && $path) {
+                        $mediaId = create_media_item($pdo, [
+                            'title' => $title,
+                            'file_path' => $path,
+                            'alt_text' => $_POST['alt_text'] ?? null,
+                            'description' => $_POST['description'] ?? null,
+                            'uploaded_by' => current_user()['username'] ?? null,
+                        ]);
+                        log_cms_activity($pdo, 'media_uploaded', [
+                            'context' => 'media',
+                            'media_id' => $mediaId,
+                            'title' => $title,
+                        ]);
+                        flash('success', 'Medium hinzugefügt.');
+                    } else {
+                        flash('error', 'Bitte Titel angeben und eine Datei hochladen.');
+                    }
+                    redirect('admin/cms');
+                    break;
+                case 'update_media':
+                    require_csrf_token('admin/cms');
+                    $mediaId = (int)($_POST['id'] ?? 0);
+                    if ($mediaId) {
+                        update_media_item($pdo, $mediaId, [
+                            'title' => $_POST['title'] ?? '',
+                            'alt_text' => $_POST['alt_text'] ?? null,
+                            'description' => $_POST['description'] ?? null,
+                        ]);
+                        log_cms_activity($pdo, 'media_updated', [
+                            'context' => 'media',
+                            'media_id' => $mediaId,
+                        ]);
+                        flash('success', 'Medium aktualisiert.');
+                    }
+                    redirect('admin/cms');
+                    break;
+                case 'delete_media':
+                    require_csrf_token('admin/cms');
+                    $mediaId = (int)($_POST['id'] ?? 0);
+                    if ($mediaId) {
+                        delete_media_item($pdo, $mediaId);
+                        log_cms_activity($pdo, 'media_deleted', [
+                            'context' => 'media',
+                            'media_id' => $mediaId,
+                        ]);
+                        flash('success', 'Medium entfernt.');
+                    }
+                    redirect('admin/cms');
+                    break;
+                case 'set_blueprint':
+                    require_csrf_token('admin/cms');
+                    $slug = $_POST['blueprint'] ?? '';
+                    if ($slug !== '') {
+                        set_active_layout_blueprint($pdo, $slug);
+                        log_cms_activity($pdo, 'layout_blueprint_set', [
+                            'context' => 'layout',
+                            'slug' => $slug,
+                        ]);
+                        flash('success', 'Layout-Blaupause aktiviert.');
+                    }
+                    redirect('admin/cms');
+                    break;
+                case 'update_meta':
+                    require_csrf_token('admin/cms');
+                    $metaDescription = trim($_POST['global_meta_description'] ?? '');
+                    $metaImage = trim($_POST['global_meta_image'] ?? '');
+                    if (!empty($_FILES['global_meta_image_file']['name'])) {
+                        $upload = handle_upload($_FILES['global_meta_image_file']);
+                        if ($upload) {
+                            $metaImage = $upload;
+                        }
+                    }
+                    update_settings($pdo, [
+                        'global_meta_description' => $metaDescription,
+                        'global_meta_image' => $metaImage,
+                    ]);
+                    log_cms_activity($pdo, 'meta_settings_updated', ['context' => 'meta']);
+                    flash('success', 'Meta-Angaben gespeichert.');
+                    redirect('admin/cms');
+                    break;
+                case 'clear_activity':
+                    require_csrf_token('admin/cms');
+                    clear_cms_activity($pdo);
+                    log_cms_activity($pdo, 'activity_log_cleared', ['context' => 'activity']);
+                    flash('success', 'Aktivitätsprotokoll geleert.');
+                    redirect('admin/cms');
+                    break;
+            }
+        }
+
+        $menu = get_menu_by_slug($pdo, 'primary');
+        $menuItems = [];
+        $menuTree = [];
+        $menuOptions = [];
+        $editMenuItem = null;
+        if ($menu) {
+            $menuItems = get_menu_items($pdo, (int)$menu['id']);
+            $grouped = [];
+            foreach ($menuItems as $item) {
+                $parentKey = (int)($item['parent_id'] ?? 0);
+                $grouped[$parentKey][] = $item;
+            }
+            $menuTree = build_menu_branch($grouped, 0);
+            $stack = $menuTree;
+            $walker = function (array $items, int $depth) use (&$walker, &$menuOptions): void {
+                foreach ($items as $entry) {
+                    $menuOptions[] = [
+                        'id' => $entry['id'],
+                        'label' => str_repeat('⸺ ', $depth) . $entry['label'],
+                    ];
+                    if (!empty($entry['children'])) {
+                        $walker($entry['children'], $depth + 1);
+                    }
+                }
+            };
+            $walker($stack, 0);
+
+            if (isset($_GET['edit_menu'])) {
+                $editId = (int)$_GET['edit_menu'];
+                foreach ($menuItems as $item) {
+                    if ((int)$item['id'] === $editId) {
+                        $editMenuItem = $item;
+                        break;
+                    }
+                }
+            }
+        }
+
+        $mediaItems = get_media_items($pdo);
+        $layoutBlueprints = get_layout_blueprints($pdo);
+        $activeBlueprint = get_active_layout_blueprint($pdo, $settings);
+        $activityEntries = get_cms_activity($pdo, 100);
+        $flashSuccess = flash('success');
+        $flashError = flash('error');
+        view('admin/cms', compact('settings', 'menuTree', 'menuOptions', 'mediaItems', 'layoutBlueprints', 'activeBlueprint', 'activityEntries', 'flashSuccess', 'flashError', 'editMenuItem'));
         break;
 
     case 'admin/content':
@@ -455,12 +655,7 @@ switch ($route) {
 
             $geneStates = [];
             if (isset($_POST['gene_states']) && is_array($_POST['gene_states'])) {
-                foreach ($_POST['gene_states'] as $slug => $state) {
-                    if (!is_string($slug) || !is_string($state)) {
-                        continue;
-                    }
-                    $geneStates[$slug] = trim($state);
-                }
+                $geneStates = normalize_gene_state_selection($_POST['gene_states']);
             }
 
             $data = [
@@ -555,7 +750,7 @@ switch ($route) {
             if (!empty($editAnimal['genetics_profile'])) {
                 $decodedProfile = json_decode($editAnimal['genetics_profile'], true);
                 if (is_array($decodedProfile)) {
-                    $editAnimal['gene_states'] = $decodedProfile;
+                    $editAnimal['gene_states'] = normalize_gene_state_selection($decodedProfile);
                 }
             }
         }
@@ -724,12 +919,7 @@ switch ($route) {
 
             $geneStates = [];
             if (isset($_POST['gene_states']) && is_array($_POST['gene_states'])) {
-                foreach ($_POST['gene_states'] as $slug => $state) {
-                    if (!is_string($slug) || !is_string($state)) {
-                        continue;
-                    }
-                    $geneStates[$slug] = trim($state);
-                }
+                $geneStates = normalize_gene_state_selection($_POST['gene_states']);
             }
 
             $data = [
@@ -817,7 +1007,7 @@ switch ($route) {
             if (!empty($editListing['genetics_profile'])) {
                 $decodedProfile = json_decode($editListing['genetics_profile'], true);
                 if (is_array($decodedProfile)) {
-                    $editListing['gene_states'] = $decodedProfile;
+                    $editListing['gene_states'] = normalize_gene_state_selection($decodedProfile);
                 }
             }
         }
@@ -1117,6 +1307,10 @@ switch ($route) {
             }
         }
         $genes = $selectedSpecies ? get_genetic_genes($pdo, (int)$selectedSpecies['id']) : [];
+        if ($selectedSpecies) {
+            $referenceMap = get_morph_reference_map();
+            $genes = array_map(static fn($gene) => enrich_gene_metadata($gene, $selectedSpecies['slug'], $referenceMap), $genes);
+        }
         $editGene = null;
         if (isset($_GET['edit_gene'])) {
             $editGene = get_genetic_gene($pdo, (int)$_GET['edit_gene']);

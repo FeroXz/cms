@@ -107,6 +107,7 @@
                                 'name' => $gene['name'],
                                 'shorthand' => $gene['shorthand'],
                                 'inheritance' => $modeLabels[$gene['inheritance_mode']] ?? $gene['inheritance_mode'],
+                                'inheritanceHint' => $gene['inheritance_hint'] ?? null,
                                 'description' => $gene['description'],
                                 'states' => $stateEntries,
                             ];
@@ -208,34 +209,53 @@
                         <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                             <?php foreach ($genes as $gene): ?>
                                 <article class="flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-night-900/60 shadow-xl shadow-black/40">
-                                    <?php if (!empty($gene['image_path'])): ?>
+                                    <?php if (!empty($gene['display_image'])): ?>
                                         <figure class="relative h-48 w-full overflow-hidden">
-                                            <img src="<?= htmlspecialchars($gene['image_path']) ?>" alt="<?= htmlspecialchars($gene['name']) ?> Morph" class="h-full w-full object-cover" loading="lazy">
+                                            <img src="<?= htmlspecialchars($gene['display_image']) ?>" alt="<?= htmlspecialchars($gene['name']) ?> Morph" class="h-full w-full object-cover" loading="lazy">
                                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-night-900/90 to-transparent px-5 py-4">
-                                                <h3 class="text-lg font-semibold text-white"><?= htmlspecialchars($gene['name']) ?></h3>
+                                                <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
+                                                    <?= htmlspecialchars($gene['name']) ?>
+                                                    <button type="button" class="gene-tooltip" aria-label="Genetische Erläuterung" title="<?= htmlspecialchars($gene['inheritance_hint'] ?? get_gene_inheritance_hint($gene['inheritance_mode'])) ?>">?</button>
+                                                </h3>
                                                 <p class="text-xs uppercase tracking-wide text-slate-300"><?= htmlspecialchars($modeLabels[$gene['inheritance_mode']] ?? $gene['inheritance_mode']) ?></p>
                                             </div>
                                         </figure>
                                     <?php else: ?>
                                         <header class="px-5 py-4">
-                                            <h3 class="text-lg font-semibold text-white"><?= htmlspecialchars($gene['name']) ?></h3>
+                                            <h3 class="flex items-center gap-2 text-lg font-semibold text-white">
+                                                <?= htmlspecialchars($gene['name']) ?>
+                                                <button type="button" class="gene-tooltip" aria-label="Genetische Erläuterung" title="<?= htmlspecialchars($gene['inheritance_hint'] ?? get_gene_inheritance_hint($gene['inheritance_mode'])) ?>">?</button>
+                                            </h3>
                                             <p class="text-xs uppercase tracking-wide text-slate-300"><?= htmlspecialchars($modeLabels[$gene['inheritance_mode']] ?? $gene['inheritance_mode']) ?></p>
                                         </header>
                                     <?php endif; ?>
                                     <div class="flex flex-1 flex-col gap-4 px-5 py-4 text-sm text-slate-200">
-                                        <?php if (!empty($gene['description'])): ?>
-                                            <p class="leading-relaxed text-slate-200"><?= htmlspecialchars($gene['description']) ?></p>
+                                        <?php if (!empty($gene['display_description'])): ?>
+                                            <p class="leading-relaxed text-slate-200"><?= htmlspecialchars($gene['display_description']) ?></p>
+                                        <?php endif; ?>
+                                        <?php if (!empty($gene['display_tags'])): ?>
+                                            <ul class="flex flex-wrap gap-2 text-xs">
+                                                <?php foreach ($gene['display_tags'] as $tag): ?>
+                                                    <li class="rounded-full bg-white/10 px-3 py-1 text-slate-100/80"><?= htmlspecialchars($tag) ?></li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        <?php endif; ?>
+                                        <?php if (!empty($gene['advisory'])): ?>
+                                            <div class="gene-warning" role="alert">
+                                                <strong><?= htmlspecialchars($gene['advisory']['title'] ?? 'Warnung') ?>:</strong>
+                                                <span><?= htmlspecialchars($gene['advisory']['message'] ?? '') ?></span>
+                                            </div>
                                         <?php endif; ?>
                                         <dl class="grid gap-2 text-xs text-slate-300">
                                             <div class="flex items-center justify-between gap-3"><dt class="font-semibold text-slate-200">Wildtyp</dt><dd><?= htmlspecialchars(gene_state_label($gene, 'normal')) ?></dd></div>
                                             <div class="flex items-center justify-between gap-3"><dt class="font-semibold text-slate-200">Träger</dt><dd><?= htmlspecialchars(gene_state_label($gene, 'heterozygous')) ?></dd></div>
                                             <div class="flex items-center justify-between gap-3"><dt class="font-semibold text-slate-200">Visuell</dt><dd><?= htmlspecialchars(gene_state_label($gene, 'homozygous')) ?></dd></div>
                                         </dl>
-                                        <?php if (!empty($gene['originator']) || !empty($gene['origin_url'])): ?>
+                                        <?php if (!empty($gene['display_origin']) || !empty($gene['display_origin_url'])): ?>
                                             <footer class="mt-auto text-xs text-slate-400">
-                                                Quelle: <?= htmlspecialchars($gene['originator'] ?? 'n/a') ?>
-                                                <?php if (!empty($gene['origin_url'])): ?>
-                                                    — <a href="<?= htmlspecialchars($gene['origin_url']) ?>" target="_blank" rel="noopener" class="text-brand-100 underline decoration-dotted underline-offset-2">Original ansehen</a>
+                                                Quelle: <?= htmlspecialchars($gene['display_origin'] ?? 'n/a') ?>
+                                                <?php if (!empty($gene['display_origin_url'])): ?>
+                                                    — <a href="<?= htmlspecialchars($gene['display_origin_url']) ?>" target="_blank" rel="noopener" class="text-brand-100 underline decoration-dotted underline-offset-2">Original ansehen</a>
                                                 <?php endif; ?>
                                             </footer>
                                         <?php endif; ?>
@@ -271,22 +291,35 @@
                                             </header>
                                         <?php endif; ?>
                                         <div class="flex flex-1 flex-col gap-4 px-5 py-4 text-sm text-slate-200">
-                                            <?php if (!empty($gene['description'])): ?>
-                                                <p class="leading-relaxed text-slate-200"><?= htmlspecialchars($gene['description']) ?></p>
-                                            <?php endif; ?>
-                                            <dl class="grid gap-2 text-xs text-slate-300">
-                                                <div class="flex items-center justify-between gap-3"><dt class="font-semibold text-slate-200">Basis</dt><dd><?= htmlspecialchars($gene['normal_label']) ?></dd></div>
-                                                <div class="flex items-center justify-between gap-3"><dt class="font-semibold text-slate-200">Teil-Kombi</dt><dd><?= htmlspecialchars($gene['heterozygous_label']) ?></dd></div>
-                                                <div class="flex items-center justify-between gap-3"><dt class="font-semibold text-slate-200">Komplett</dt><dd><?= htmlspecialchars($gene['homozygous_label']) ?></dd></div>
-                                            </dl>
-                                            <?php if (!empty($gene['originator']) || !empty($gene['origin_url'])): ?>
-                                                <footer class="mt-auto text-xs text-slate-400">
-                                                    Quelle: <?= htmlspecialchars($gene['originator'] ?? 'n/a') ?>
-                                                    <?php if (!empty($gene['origin_url'])): ?>
-                                                        — <a href="<?= htmlspecialchars($gene['origin_url']) ?>" target="_blank" rel="noopener" class="text-brand-100 underline decoration-dotted underline-offset-2">Original ansehen</a>
-                                                    <?php endif; ?>
-                                                </footer>
-                                            <?php endif; ?>
+                                        <?php if (!empty($gene['display_description'])): ?>
+                                            <p class="leading-relaxed text-slate-200"><?= htmlspecialchars($gene['display_description']) ?></p>
+                                        <?php endif; ?>
+                                        <?php if (!empty($gene['display_tags'])): ?>
+                                            <ul class="flex flex-wrap gap-2 text-xs">
+                                                <?php foreach ($gene['display_tags'] as $tag): ?>
+                                                    <li class="rounded-full bg-white/10 px-3 py-1 text-slate-100/80"><?= htmlspecialchars($tag) ?></li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        <?php endif; ?>
+                                        <?php if (!empty($gene['advisory'])): ?>
+                                            <div class="gene-warning" role="alert">
+                                                <strong><?= htmlspecialchars($gene['advisory']['title'] ?? 'Warnung') ?>:</strong>
+                                                <span><?= htmlspecialchars($gene['advisory']['message'] ?? '') ?></span>
+                                            </div>
+                                        <?php endif; ?>
+                                        <dl class="grid gap-2 text-xs text-slate-300">
+                                            <div class="flex items-center justify-between gap-3"><dt class="font-semibold text-slate-200">Basis</dt><dd><?= htmlspecialchars($gene['normal_label']) ?></dd></div>
+                                            <div class="flex items-center justify-between gap-3"><dt class="font-semibold text-slate-200">Teil-Kombi</dt><dd><?= htmlspecialchars($gene['heterozygous_label']) ?></dd></div>
+                                            <div class="flex items-center justify-between gap-3"><dt class="font-semibold text-slate-200">Komplett</dt><dd><?= htmlspecialchars($gene['homozygous_label']) ?></dd></div>
+                                        </dl>
+                                        <?php if (!empty($gene['display_origin']) || !empty($gene['display_origin_url'])): ?>
+                                            <footer class="mt-auto text-xs text-slate-400">
+                                                Quelle: <?= htmlspecialchars($gene['display_origin'] ?? 'n/a') ?>
+                                                <?php if (!empty($gene['display_origin_url'])): ?>
+                                                    — <a href="<?= htmlspecialchars($gene['display_origin_url']) ?>" target="_blank" rel="noopener" class="text-brand-100 underline decoration-dotted underline-offset-2">Original ansehen</a>
+                                                <?php endif; ?>
+                                            </footer>
+                                        <?php endif; ?>
                                         </div>
                                     </article>
                                 <?php endforeach; ?>

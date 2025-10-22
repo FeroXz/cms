@@ -1,6 +1,12 @@
 <?php include __DIR__ . '/../partials/header.php'; ?>
 <section class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-    <h1>Galerie verwalten</h1>
+    <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.4em] text-amber-400/80">Mediathek</p>
+            <h1 class="text-3xl font-semibold text-white">Galerie verwalten</h1>
+        </div>
+        <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/cms">Zurück zur CMS-Zentrale</a>
+    </div>
     <?php include __DIR__ . '/nav.php'; ?>
 
     <?php if ($flashSuccess): ?>
@@ -14,7 +20,7 @@
         <div class="card">
             <h2>Bestehende Aufnahmen</h2>
             <?php if (empty($galleryImages)): ?>
-                <p>Noch keine Einträge vorhanden.</p>
+                <div class="datatable__empty">Noch keine Einträge vorhanden. Lade die ersten Bilder über den Upload-Bereich auf der rechten Seite hoch.</div>
             <?php else: ?>
                 <div class="grid cards" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
                     <?php foreach ($galleryImages as $image): ?>
@@ -23,19 +29,21 @@
                             $previewStyle = sprintf('width:100%%;height:180px;object-fit:%s;', $fitMode);
                         ?>
                         <article class="card" style="padding:1rem;">
-                            <div style="position:relative;border-radius:1rem;overflow:hidden;margin-bottom:0.75rem;background:linear-gradient(135deg, rgba(15,23,42,0.85), rgba(30,64,175,0.35));">
-                                <img src="<?= htmlspecialchars($image['image_path']) ?>" alt="<?= htmlspecialchars($image['title']) ?>" style="<?= $previewStyle ?>">
-                                <?php if (empty($image['is_published'])): ?>
-                                    <span class="badge" style="position:absolute;top:0.75rem;left:0.75rem;background:rgba(248,113,113,0.25);color:#fecaca;">Entwurf</span>
-                                <?php endif; ?>
-                            </div>
+                            <button type="button" class="button-link w-full" style="padding:0;" data-lightbox data-lightbox-src="<?= htmlspecialchars($image['image_path']) ?>" data-lightbox-title="<?= htmlspecialchars($image['title']) ?>" data-lightbox-caption="<?= htmlspecialchars($image['caption'] ?? '') ?>">
+                                <div style="position:relative;border-radius:1.25rem;overflow:hidden;margin-bottom:0.75rem;background:linear-gradient(135deg, rgba(15,23,42,0.85), rgba(249,115,22,0.25));">
+                                    <img src="<?= htmlspecialchars($image['image_path']) ?>" alt="<?= htmlspecialchars($image['title']) ?>" style="<?= $previewStyle ?>">
+                                    <?php if (empty($image['is_published'])): ?>
+                                        <span class="badge" style="position:absolute;top:0.75rem;left:0.75rem;background:rgba(248,113,113,0.25);color:#fecaca;">Entwurf</span>
+                                    <?php endif; ?>
+                                </div>
+                            </button>
                             <h3 style="margin:0;font-size:1.1rem;"><?= htmlspecialchars($image['title']) ?></h3>
                             <?php if (!empty($image['caption'])): ?>
                                 <p class="text-muted" style="font-size:0.85rem;margin-top:0.35rem;line-height:1.4;"><?= htmlspecialchars($image['caption']) ?></p>
                             <?php endif; ?>
                             <p class="text-muted" style="font-size:0.75rem;margin-top:0.5rem;">Reihenfolge: <?= (int)$image['display_order'] ?></p>
-                            <p style="margin:0.75rem 0 0;font-size:0.75rem;color:rgba(148,163,184,0.85);">
-                                Darstellung: <strong style="color:#e2e8f0;"><?= $fitMode === 'contain' ? 'Bild einpassen' : 'Bild füllen' ?></strong>
+                            <p style="margin:0.75rem 0 0;font-size:0.75rem;color:rgba(248,245,242,0.7);">
+                                Darstellung: <strong style="color:#fef3c7;"><?= $fitMode === 'contain' ? 'Bild einpassen' : 'Bild füllen' ?></strong>
                             </p>
                             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;">
                                 <a class="btn btn-secondary" href="<?= BASE_URL ?>/index.php?route=admin/gallery&amp;edit=<?= (int)$image['id'] ?>">Bearbeiten</a>
@@ -53,7 +61,7 @@
         </div>
         <div class="card">
             <h2><?= $editImage ? 'Galeriebild bearbeiten' : 'Neues Bild hinzufügen' ?></h2>
-            <form method="post" enctype="multipart/form-data">
+            <form method="post" enctype="multipart/form-data" class="space-y-4">
                 <?= csrf_field() ?>
                 <input type="hidden" name="form_type" value="<?= $editImage ? 'update' : 'create' ?>">
                 <?php if ($editImage): ?>
@@ -75,9 +83,19 @@
                         <option value="contain" <?= $formFitMode === 'contain' ? 'selected' : '' ?>>Bild einpassen (vollständig anzeigen)</option>
                     </select>
                 </label>
-                <label>Bild auswählen (Upload)
-                    <input type="file" name="image" accept="image/*">
-                </label>
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-amber-100">Bild auswählen</label>
+                    <div class="dropzone" data-dropzone data-dropzone-input="#gallery-upload-input">
+                        <div class="dropzone__icon" aria-hidden="true">⬆</div>
+                        <p class="text-sm text-white/80">Ziehe Bilder hierher oder nutze den Button für eine Dateiauswahl.</p>
+                        <p class="text-xs text-white/60" data-dropzone-status>Keine Datei gewählt</p>
+                        <div class="dropzone__progress" aria-hidden="true">
+                            <div class="dropzone__progress-bar" data-dropzone-progress-bar></div>
+                        </div>
+                        <label for="gallery-upload-input" class="btn btn-secondary" style="margin-top:1rem;">Dateien auswählen</label>
+                        <input type="file" name="image" accept="image/*" id="gallery-upload-input" class="sr-only">
+                    </div>
+                </div>
                 <label>oder externe Bild-URL
                     <input type="url" name="image_url" value="<?= htmlspecialchars($editImage['image_path'] ?? '') ?>" placeholder="https://…">
                 </label>
@@ -85,9 +103,9 @@
                     <input type="checkbox" name="is_published" value="1" <?= !empty($editImage['is_published']) ? 'checked' : '' ?>>
                     <span>Öffentlich anzeigen</span>
                 </label>
-                <button type="submit" style="margin-top:1.25rem;">Speichern</button>
+                <button type="submit" class="btn btn-primary" style="margin-top:1.25rem;">Speichern</button>
                 <?php if ($editImage): ?>
-                    <a href="<?= BASE_URL ?>/index.php?route=admin/gallery" class="btn btn-secondary" style="margin-left:0.75rem;">Abbrechen</a>
+                    <a href="<?= BASE_URL ?>/index.php?route=admin/gallery" class="btn btn-ghost" style="margin-left:0.75rem;">Abbrechen</a>
                 <?php endif; ?>
             </form>
         </div>

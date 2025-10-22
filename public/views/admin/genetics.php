@@ -127,8 +127,21 @@
                                         <?php if (!empty($gene['is_reference'])): ?>
                                             <span class="badge badge-pattern" style="margin-left:0.5rem;">Referenz</span>
                                         <?php endif; ?>
+                                        <?php if (!empty($gene['advisory'])): ?>
+                                            <div class="skullface-warning" role="alert">
+                                                <strong><?= htmlspecialchars($gene['advisory']['title'] ?? 'Warnung') ?>:</strong>
+                                                <span><?= htmlspecialchars($gene['advisory']['message'] ?? '') ?></span>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
-                                    <td><?= htmlspecialchars($gene['shorthand'] ?? '') ?></td>
+                                    <td>
+                                        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+                                            <span><?= htmlspecialchars($gene['shorthand'] ?? '') ?></span>
+                                            <?php if (!empty($gene['inheritance_hint'])): ?>
+                                                <button type="button" class="gene-tooltip" title="<?= htmlspecialchars($gene['inheritance_hint']) ?>" aria-label="Genetischer Hinweis">?</button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
                                     <td>
                                         <?php
                                             $modeLabels = [
@@ -140,11 +153,14 @@
                                         <?= htmlspecialchars($modeLabels[$gene['inheritance_mode']] ?? $gene['inheritance_mode']) ?>
                                     </td>
                                     <td>
-                                        <?php if (!empty($gene['originator'])): ?>
+                                        <?php if (!empty($gene['display_origin'])): ?>
+                                            <div><?= htmlspecialchars($gene['display_origin']) ?></div>
+                                        <?php elseif (!empty($gene['originator'])): ?>
                                             <div><?= htmlspecialchars($gene['originator']) ?></div>
                                         <?php endif; ?>
-                                        <?php if (!empty($gene['origin_url'])): ?>
-                                            <a href="<?= htmlspecialchars($gene['origin_url']) ?>" class="text-xs" target="_blank" rel="noopener">Quelle öffnen</a>
+                                        <?php $originUrl = $gene['display_origin_url'] ?? $gene['origin_url'] ?? null; ?>
+                                        <?php if (!empty($originUrl)): ?>
+                                            <a href="<?= htmlspecialchars($originUrl) ?>" class="text-xs" target="_blank" rel="noopener">Quelle öffnen</a>
                                         <?php endif; ?>
                                     </td>
                                     <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
@@ -217,6 +233,11 @@
                         <label>Beschreibung
                             <textarea name="description" rows="4"><?= htmlspecialchars($editGene['description'] ?? '') ?></textarea>
                         </label>
+                        <?php if ($editGene && isset($editGene['slug']) && strtolower($editGene['slug']) === 'skullface'): ?>
+                            <div class="skullface-warning" role="alert">
+                                <strong>Keine Unterstützung:</strong> Skullface wird als Qualzucht eingestuft. Entferne dieses Gen aus deinen Beständen und veröffentliche es nicht im CMS.
+                            </div>
+                        <?php endif; ?>
                         <button type="submit">Speichern</button>
                     </form>
                 <?php endif; ?>

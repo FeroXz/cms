@@ -7,9 +7,23 @@ function view(string $template, array $data = []): void
 
     global $pdo;
     if (isset($pdo)) {
-        if (!isset($data['navPages']) && function_exists('get_navigation_pages')) {
+        if (!isset($data['settings']) && function_exists('get_all_settings')) {
+            $data['settings'] = get_all_settings($pdo);
+        }
+
+        $settingsData = $data['settings'] ?? [];
+        $novaEnabled = isset($settingsData['nova_features_enabled'])
+            ? setting_enabled($settingsData, 'nova_features_enabled')
+            : false;
+
+        if (!isset($data['navMenu']) && $novaEnabled && function_exists('get_menu_tree')) {
+            $data['navMenu'] = get_menu_tree($pdo, 'primary');
+        }
+
+        if (!isset($data['navPages']) && (!$novaEnabled || empty($data['navMenu'])) && function_exists('get_navigation_pages')) {
             $data['navPages'] = get_navigation_pages($pdo);
         }
+
         if (!isset($data['navCareArticles']) && function_exists('get_published_care_articles')) {
             $data['navCareArticles'] = get_published_care_articles($pdo);
         }
@@ -332,15 +346,54 @@ function build_gene_state_label(array $gene, string $state): ?string
     }
 
     $name = $gene['name'] ?? '';
+    $normalLabel = trim((string)($gene['normal_label'] ?? '')) ?: ($name ?: '');
     if ($state === 'heterozygous') {
-        return $gene['heterozygous_label'] ?: ($name ? $name . ' (het)' : null);
+        $heteroLabel = trim((string)($gene['heterozygous_label'] ?? ''));
+        if ($normalLabel !== '' && $heteroLabel !== '') {
+            return trim($normalLabel . ' ' . $heteroLabel);
+        }
+
+        if ($heteroLabel !== '') {
+            return $heteroLabel;
+        }
+
+        return $normalLabel !== '' ? $normalLabel : ($name ? $name . ' (het)' : null);
     }
 
     if ($state === 'homozygous') {
-        return $gene['homozygous_label'] ?: ($name ? $name . ' (hom)' : null);
+        $homoLabel = trim((string)($gene['homozygous_label'] ?? ''));
+        if ($homoLabel !== '') {
+            return $homoLabel;
+        }
+
+        return $name ?: null;
     }
 
-    return $gene['normal_label'] ?: ($name ?: null);
+    // "Normal" entspricht einem Wildtyp und soll wie "Nicht festgelegt" behandelt werden.
+    return null;
+}
+
+function normalize_gene_state_selection(array $states): array
+{
+    $normalized = [];
+    foreach ($states as $slug => $state) {
+        if (!is_string($slug) || $slug === '') {
+            continue;
+        }
+
+        if (!is_string($state)) {
+            continue;
+        }
+
+        $stateKey = trim($state);
+        if (!in_array($stateKey, ['heterozygous', 'homozygous'], true)) {
+            continue;
+        }
+
+        $normalized[$slug] = $stateKey;
+    }
+
+    return $normalized;
 }
 
 function get_setting(PDO $pdo, string $key, string $default = ''): string
