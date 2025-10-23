@@ -956,6 +956,27 @@ switch ($route) {
         ]);
         break;
 
+    case 'admin/genetics/import':
+        require_login();
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            flash('error', 'Keine Berechtigung.');
+            redirect('admin/dashboard');
+        }
+        $settings = get_all_settings($pdo);
+        $csrfToken = csrf_token();
+        $flashSuccess = flash('success');
+        $flashError = flash('error');
+        view('admin/genetics_import', [
+            'settings' => $settings,
+            'csrfToken' => $csrfToken,
+            'flashSuccess' => $flashSuccess,
+            'flashError' => $flashError,
+        ]);
+        break;
+
     case 'admin/inquiries':
         require_login();
         if (!is_authorized('can_manage_adoptions')) {
@@ -1005,6 +1026,105 @@ switch ($route) {
         $flashSuccess = flash('success');
         view('admin/users', compact('users', 'editUser', 'flashSuccess', 'settings'));
         break;
+
+    case 'api/import/morphs':
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            header('Allow: POST');
+            echo json_encode(['status' => 'error', 'message' => 'Methode nicht erlaubt.']);
+            exit;
+        }
+
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Zugriff verweigert.']);
+            exit;
+        }
+
+        $token = $_POST['_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+        if (!verify_csrf_token($token)) {
+            http_response_code(419);
+            echo json_encode(['status' => 'error', 'message' => 'CSRF-Token ungültig oder abgelaufen.']);
+            exit;
+        }
+
+        if (empty($_FILES['file']) || empty($_FILES['file']['tmp_name'])) {
+            http_response_code(422);
+            echo json_encode(['status' => 'error', 'message' => 'CSV-Datei fehlt.']);
+            exit;
+        }
+
+        $dryRunFlag = $_GET['dryRun'] ?? $_POST['dryRun'] ?? false;
+        $dryRun = filter_var($dryRunFlag, FILTER_VALIDATE_BOOLEAN);
+
+        $mapping = [];
+        if (!empty($_POST['mapping']) && is_array($_POST['mapping'])) {
+            foreach ($_POST['mapping'] as $key => $value) {
+                if (is_string($key) && $key !== '') {
+                    $mapping[strtolower($key)] = (string)$value;
+                }
+            }
+        }
+
+        try {
+            $result = import_genetic_morphs_from_csv($pdo, $_FILES['file']['tmp_name'], [
+                'dry_run' => $dryRun,
+                'column_map' => $mapping,
+                'preview_limit' => 10,
+            ]);
+            $_SESSION['morph_import_preview'] = [
+                'rows' => $result['preview'],
+                'generated_at' => time(),
+            ];
+
+            echo json_encode([
+                'status' => 'ok',
+                'dryRun' => $dryRun,
+                'summary' => $result['summary'],
+                'preview' => $result['preview'],
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (InvalidArgumentException $exception) {
+            http_response_code(422);
+            echo json_encode([
+                'status' => 'error',
+                'message' => $exception->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (Throwable $exception) {
+            http_response_code(500);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Import fehlgeschlagen.',
+            ], JSON_UNESCAPED_UNICODE);
+        }
+        exit;
+
+    case 'api/import/morphs/sample':
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Zugriff verweigert.']);
+            exit;
+        }
+
+        $rows = get_last_morph_import_preview();
+        if (!$rows) {
+            $rows = get_default_morph_preview_rows();
+        }
+
+        echo json_encode([
+            'status' => 'ok',
+            'rows' => $rows,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
 
     default:
         http_response_code(404);

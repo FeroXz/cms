@@ -1,5 +1,7 @@
 # FeroxZ – PHP Reptile CMS
 
+**Aktuelle Version:** 3.1.1
+
 FeroxZ ist ein leichtgewichtiges, auf PHP 8.3 und SQLite basierendes CMS für Reptilienhalter. Es vereint Tierverwaltung, Tierabgabe, private Tierakten sowie ein Admin-Backend mit granularen Berechtigungen. Alle Inhalte werden persistiert in einer lokalen SQLite-Datenbank gespeichert, Medien landen im Verzeichnis `uploads/`.
 
 ## Kernfunktionen
@@ -78,9 +80,36 @@ Syntax-Check der PHP-Dateien:
 find public app -name "*.php" -print0 | xargs -0 -n1 php -l
 ```
 
+## Funktions-Checkliste
+
+- [x] Morph-CSV-Import mit Vorschau, Dry-Run und Duplikat-Erkennung
+
 ## Standard-Login
 
 - Benutzername: `admin`
 - Passwort: `12345678`
 
 Bitte ändere das Passwort nach der ersten Anmeldung über die Benutzerverwaltung.
+
+## Seeds
+
+- [x] `seed/animals.csv` mit aktuellen Bestandsdaten
+- [x] Drei Morph-CSV-Dateien (`pogona`, `cornsnake`, `ballpython`)
+- [x] Zehn Wiki-Artikel als Markdown im Ordner `seed/wiki/`
+- [x] Acht News-Beiträge als Markdown im Ordner `seed/news/`
+- [x] Seed-Check-Skript `scripts/seed_check.ts`
+
+## Schnellstart
+
+1. Repository klonen und in das Projektverzeichnis wechseln.
+2. `.env.example` nach `.env` kopieren und Variablen anpassen.
+3. Schreibrechte für `storage/` und `uploads/` setzen.
+4. Optional: `node scripts/seed_check.ts` ausführen, um Seed-Vollständigkeit zu prüfen.
+5. Webserver auf `public/` zeigen lassen und im Browser öffnen.
+
+## Update-Funktion
+
+- Die Update-Funktion kann serverseitig `git pull --rebase`, optionale Migrationen und einen Build-Lauf triggern.
+- Aktiviere sie per `APP_ENABLE_UPDATE=true` in der `.env`.
+- In lokalen Entwicklungsumgebungen führt der Button einen Dry-Run aus und meldet das Ergebnis als Toast im Admin-Dashboard.
+- Nach erfolgreichem Lauf erscheint ein Banner mit der neuesten Version und Verweis auf den Changelog.

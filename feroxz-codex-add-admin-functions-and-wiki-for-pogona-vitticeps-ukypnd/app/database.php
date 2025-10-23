@@ -212,4 +212,20 @@ function initialize_database(PDO $pdo): void
     if (!in_array('is_reference', $geneColumnNames, true)) {
         $pdo->exec('ALTER TABLE genetic_genes ADD COLUMN is_reference INTEGER NOT NULL DEFAULT 0');
     }
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS genetic_morphs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        species_slug TEXT NOT NULL,
+        species_name TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        normalized_name TEXT NOT NULL,
+        morph_type TEXT NOT NULL,
+        aliases TEXT,
+        normalized_aliases TEXT,
+        description TEXT,
+        source_url TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(species_slug, normalized_name)
+    )');
 }

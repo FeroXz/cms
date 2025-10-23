@@ -1,6 +1,7 @@
 <?php
 
 const GENETIC_INHERITANCE_MODES = ['recessive', 'dominant', 'incomplete_dominant'];
+const GENETIC_MORPH_TYPES = ['recessive', 'dominant', 'codominant', 'polygenic'];
 
 function get_genetic_species(PDO $pdo): array
 {
@@ -1361,3 +1362,511 @@ function ensure_default_genetics(PDO $pdo): void
     }
 }
 
+function normalize_morph_identifier(string $value): string
+{
+    return slugify(str_replace(['/', '_', '.'], '-', strtolower(trim($value))));
+}
+
+function normalize_morph_type(string $type): string
+{
+    $value = strtolower(trim($type));
+    $value = str_replace(['_', ' '], '-', $value);
+
+    $map = [
+        'co-dominant' => 'codominant',
+        'co-dominance' => 'codominant',
+        'codominant' => 'codominant',
+        'co-dominant-(inkomplett)' => 'codominant',
+        'incomplete-dominant' => 'codominant',
+        'inkomplett-dominant' => 'codominant',
+        'dominant' => 'dominant',
+        'recessive' => 'recessive',
+        'rezessiv' => 'recessive',
+        'polygenic' => 'polygenic',
+        'polygenetic' => 'polygenic',
+    ];
+
+    if (isset($map[$value])) {
+        return $map[$value];
+    }
+
+    $fallback = preg_replace('/[^a-z]/', '', $value);
+    if ($fallback !== '' && in_array($fallback, GENETIC_MORPH_TYPES, true)) {
+        return $fallback;
+    }
+
+    return 'polygenic';
+}
+
+function parse_morph_aliases(?string $raw): array
+{
+    if ($raw === null || trim($raw) === '') {
+        return [];
+    }
+
+    $parts = preg_split('/[;,|]/', $raw);
+    $normalized = [];
+    foreach ($parts as $part) {
+        $trimmed = trim($part);
+        if ($trimmed === '') {
+            continue;
+        }
+        $normalized[] = $trimmed;
+    }
+
+    return array_values(array_unique($normalized));
+}
+
+function decode_morph_aliases(?string $value): array
+{
+    if (!$value) {
+        return [];
+    }
+
+    $decoded = json_decode($value, true);
+    if (is_array($decoded)) {
+        return array_values(array_filter(array_map('strval', $decoded)));
+    }
+
+    return [];
+}
+
+function build_existing_morph_index(PDO $pdo, string $speciesSlug): array
+{
+    $stmt = $pdo->prepare('SELECT * FROM genetic_morphs WHERE species_slug = :slug');
+    $stmt->execute(['slug' => $speciesSlug]);
+    $records = $stmt->fetchAll();
+
+    $index = [
+        'records' => [],
+        'by_name' => [],
+        'by_alias' => [],
+    ];
+
+    foreach ($records as $record) {
+        $index['records'][(int)$record['id']] = $record;
+        $index['by_name'][$record['normalized_name']] = $record;
+        foreach (decode_morph_aliases($record['normalized_aliases'] ?? '') as $alias) {
+            $index['by_alias'][$alias] = $record;
+        }
+    }
+
+    return $index;
+}
+
+function update_morph_index_entry(array &$index, array $record): void
+{
+    $index['records'][(int)$record['id']] = $record;
+    $index['by_name'][$record['normalized_name']] = $record;
+    foreach (decode_morph_aliases($record['normalized_aliases'] ?? '') as $alias) {
+        $index['by_alias'][$alias] = $record;
+    }
+}
+
+function find_existing_morph(array $index, string $normalizedName, array $normalizedAliases): ?array
+{
+    if (isset($index['by_name'][$normalizedName])) {
+        return $index['by_name'][$normalizedName];
+    }
+
+    foreach ($normalizedAliases as $alias) {
+        if (isset($index['by_name'][$alias])) {
+            return $index['by_name'][$alias];
+        }
+        if (isset($index['by_alias'][$alias])) {
+            return $index['by_alias'][$alias];
+        }
+    }
+
+    return null;
+}
+
+function prepare_morph_preview_row(array $row, string $action, ?string $note = null): array
+{
+    return [
+        'line' => $row['line'],
+        'name' => $row['display_name'],
+        'species' => $row['species_name'],
+        'type' => $row['morph_type'],
+        'aliases' => $row['aliases'] ? implode(', ', $row['aliases']) : '',
+        'action' => $action,
+        'note' => $note,
+    ];
+}
+
+function get_last_morph_import_preview(): array
+{
+    if (!empty($_SESSION['morph_import_preview']['rows']) && is_array($_SESSION['morph_import_preview']['rows'])) {
+        return $_SESSION['morph_import_preview']['rows'];
+    }
+
+    return [];
+}
+
+function get_default_morph_preview_rows(): array
+{
+    $files = [
+        __DIR__ . '/../seed/pogona_morphs_minimal.csv',
+        __DIR__ . '/../seed/cornsnake_morphs_minimal.csv',
+        __DIR__ . '/../seed/ballpython_morphs_minimal.csv',
+    ];
+
+    $rows = [];
+    foreach ($files as $file) {
+        if (!is_file($file) || !is_readable($file)) {
+            continue;
+        }
+
+        if (($handle = fopen($file, 'rb')) === false) {
+            continue;
+        }
+
+        $headers = fgetcsv($handle) ?: [];
+        $line = 1;
+        while (($data = fgetcsv($handle)) !== false && count($rows) < 10) {
+            $line++;
+            $assoc = [];
+            foreach ($headers as $index => $header) {
+                $assoc[strtolower(trim((string)$header))] = $data[$index] ?? '';
+            }
+            $rows[] = [
+                'line' => $line,
+                'name' => $assoc['name'] ?? '',
+                'species' => $assoc['species'] ?? ($assoc['trait_type'] ?? ''),
+                'type' => $assoc['type'] ?? ($assoc['trait_type'] ?? ''),
+                'aliases' => $assoc['aliases'] ?? '',
+                'action' => 'sample',
+                'note' => basename($file),
+            ];
+        }
+
+        fclose($handle);
+
+        if (count($rows) >= 10) {
+            break;
+        }
+    }
+
+    return $rows;
+}
+
+function import_genetic_morphs_from_csv(PDO $pdo, string $filePath, array $options = []): array
+{
+    $dryRun = !empty($options['dry_run']);
+    $columnMap = $options['column_map'] ?? [];
+    $previewLimit = isset($options['preview_limit']) ? (int)$options['preview_limit'] : 10;
+
+    if (!is_file($filePath) || !is_readable($filePath)) {
+        throw new InvalidArgumentException('CSV-Datei konnte nicht gelesen werden.');
+    }
+
+    if (($handle = fopen($filePath, 'rb')) === false) {
+        throw new RuntimeException('CSV-Datei konnte nicht geöffnet werden.');
+    }
+
+    $header = fgetcsv($handle);
+    if ($header === false) {
+        fclose($handle);
+        throw new InvalidArgumentException('CSV-Datei enthält keine Kopfzeile.');
+    }
+
+    $headerMap = [];
+    foreach ($header as $index => $label) {
+        $normalized = strtolower(trim((string)$label));
+        $headerMap[$normalized] = $index;
+    }
+
+    $resolveColumn = function (string $field) use ($columnMap, $headerMap) {
+        $requested = strtolower(trim((string)($columnMap[$field] ?? '')));
+        if ($requested !== '' && $requested !== '__skip__' && isset($headerMap[$requested])) {
+            return $headerMap[$requested];
+        }
+
+        if (isset($headerMap[$field])) {
+            return $headerMap[$field];
+        }
+
+        return null;
+    };
+
+    $requiredFields = ['name', 'species', 'type'];
+    $preparedRows = [];
+    $previewRows = [];
+    $summary = [
+        'total' => 0,
+        'valid' => 0,
+        'created' => 0,
+        'updated' => 0,
+        'unchanged' => 0,
+        'duplicates' => 0,
+        'skipped' => 0,
+        'errors' => [],
+        'warnings' => [],
+    ];
+
+    $seen = [];
+    $lineNumber = 1;
+    while (($row = fgetcsv($handle)) !== false) {
+        $lineNumber++;
+        $summary['total']++;
+
+        $values = [];
+        foreach (['name', 'species', 'type', 'aliases', 'description', 'sourceurl'] as $field) {
+            $columnIndex = $resolveColumn($field);
+            $values[$field] = $columnIndex !== null ? trim((string)($row[$columnIndex] ?? '')) : '';
+        }
+
+        $missing = [];
+        foreach ($requiredFields as $field) {
+            if ($values[$field] === '') {
+                $missing[] = $field;
+            }
+        }
+
+        if (!empty($missing)) {
+            $summary['skipped']++;
+            $summary['errors'][] = sprintf('Zeile %d: fehlende Pflichtfelder (%s)', $lineNumber, implode(', ', $missing));
+            continue;
+        }
+
+        $speciesName = $values['species'];
+        $speciesSlug = normalize_morph_identifier($speciesName);
+        $displayName = $values['name'];
+        $normalizedName = normalize_morph_identifier($displayName);
+        $aliasList = parse_morph_aliases($values['aliases']);
+        $normalizedAliases = [];
+        foreach ($aliasList as $alias) {
+            $normalizedAlias = normalize_morph_identifier($alias);
+            if ($normalizedAlias !== '' && $normalizedAlias !== $normalizedName) {
+                $normalizedAliases[] = $normalizedAlias;
+            }
+        }
+        $normalizedAliases = array_values(array_unique($normalizedAliases));
+
+        if (!isset($seen[$speciesSlug])) {
+            $seen[$speciesSlug] = [];
+        }
+
+        $duplicateFound = isset($seen[$speciesSlug][$normalizedName]);
+        if (!$duplicateFound) {
+            foreach ($normalizedAliases as $alias) {
+                if (isset($seen[$speciesSlug][$alias])) {
+                    $duplicateFound = true;
+                    break;
+                }
+            }
+        }
+
+        if ($duplicateFound) {
+            $summary['duplicates']++;
+            if (count($previewRows) < $previewLimit) {
+                $previewRows[] = [
+                    'line' => $lineNumber,
+                    'name' => $displayName,
+                    'species' => $speciesName,
+                    'type' => $values['type'],
+                    'aliases' => $values['aliases'],
+                    'action' => 'duplicate',
+                    'note' => 'In Datei dupliziert',
+                ];
+            }
+            continue;
+        }
+
+        $seen[$speciesSlug][$normalizedName] = true;
+        foreach ($normalizedAliases as $alias) {
+            $seen[$speciesSlug][$alias] = true;
+        }
+
+        $typeNormalized = normalize_morph_type($values['type']);
+        if (!in_array($typeNormalized, GENETIC_MORPH_TYPES, true)) {
+            $summary['warnings'][] = sprintf('Zeile %d: unbekannter Morph-Typ "%s" – als polygenic behandelt.', $lineNumber, $values['type']);
+            $typeNormalized = 'polygenic';
+        }
+
+        $sourceUrl = $values['sourceurl'] !== '' ? $values['sourceurl'] : null;
+        if ($sourceUrl && !filter_var($sourceUrl, FILTER_VALIDATE_URL)) {
+            $summary['warnings'][] = sprintf('Zeile %d: ungültige URL "%s" verworfen.', $lineNumber, $sourceUrl);
+            $sourceUrl = null;
+        }
+
+        $prepared = [
+            'line' => $lineNumber,
+            'display_name' => $displayName,
+            'species_name' => $speciesName,
+            'species_slug' => $speciesSlug,
+            'normalized_name' => $normalizedName,
+            'aliases' => $aliasList,
+            'normalized_aliases' => $normalizedAliases,
+            'morph_type' => $typeNormalized,
+            'description' => $values['description'] !== '' ? $values['description'] : null,
+            'source_url' => $sourceUrl,
+        ];
+
+        $preparedRows[] = $prepared;
+        $summary['valid']++;
+
+        if (count($previewRows) < $previewLimit) {
+            $previewRows[] = [
+                'line' => $lineNumber,
+                'name' => $displayName,
+                'species' => $speciesName,
+                'type' => $values['type'],
+                'aliases' => $values['aliases'],
+                'action' => 'pending',
+                'note' => null,
+            ];
+        }
+    }
+
+    fclose($handle);
+
+    if (!$dryRun) {
+        $pdo->beginTransaction();
+    }
+
+    $existingCache = [];
+
+    try {
+        foreach ($preparedRows as $prepared) {
+            if (!isset($existingCache[$prepared['species_slug']])) {
+                $existingCache[$prepared['species_slug']] = build_existing_morph_index($pdo, $prepared['species_slug']);
+            }
+
+            $index =& $existingCache[$prepared['species_slug']];
+            $existing = find_existing_morph($index, $prepared['normalized_name'], $prepared['normalized_aliases']);
+
+            $aliasesJson = $prepared['aliases'] ? json_encode($prepared['aliases'], JSON_UNESCAPED_UNICODE) : null;
+            $normalizedAliasesJson = $prepared['normalized_aliases'] ? json_encode($prepared['normalized_aliases']) : null;
+
+            if ($existing === null) {
+                $summary['created']++;
+                if (!$dryRun) {
+                    $stmt = $pdo->prepare('INSERT INTO genetic_morphs (species_slug, species_name, display_name, normalized_name, morph_type, aliases, normalized_aliases, description, source_url) VALUES (:species_slug, :species_name, :display_name, :normalized_name, :morph_type, :aliases, :normalized_aliases, :description, :source_url)');
+                    $stmt->execute([
+                        'species_slug' => $prepared['species_slug'],
+                        'species_name' => $prepared['species_name'],
+                        'display_name' => $prepared['display_name'],
+                        'normalized_name' => $prepared['normalized_name'],
+                        'morph_type' => $prepared['morph_type'],
+                        'aliases' => $aliasesJson,
+                        'normalized_aliases' => $normalizedAliasesJson,
+                        'description' => $prepared['description'],
+                        'source_url' => $prepared['source_url'],
+                    ]);
+
+                    $newRecord = [
+                        'id' => (int)$pdo->lastInsertId(),
+                        'species_slug' => $prepared['species_slug'],
+                        'species_name' => $prepared['species_name'],
+                        'display_name' => $prepared['display_name'],
+                        'normalized_name' => $prepared['normalized_name'],
+                        'morph_type' => $prepared['morph_type'],
+                        'aliases' => $aliasesJson,
+                        'normalized_aliases' => $normalizedAliasesJson,
+                        'description' => $prepared['description'],
+                        'source_url' => $prepared['source_url'],
+                    ];
+                    update_morph_index_entry($index, $newRecord);
+                } else {
+                    $newRecord = [
+                        'id' => 0,
+                        'species_slug' => $prepared['species_slug'],
+                        'species_name' => $prepared['species_name'],
+                        'display_name' => $prepared['display_name'],
+                        'normalized_name' => $prepared['normalized_name'],
+                        'morph_type' => $prepared['morph_type'],
+                        'aliases' => $aliasesJson,
+                        'normalized_aliases' => $normalizedAliasesJson,
+                        'description' => $prepared['description'],
+                        'source_url' => $prepared['source_url'],
+                    ];
+                    update_morph_index_entry($index, $newRecord);
+                }
+
+                if (count($previewRows) < $previewLimit) {
+                    $previewRows[] = prepare_morph_preview_row($prepared, 'create');
+                }
+                continue;
+            }
+
+            $existingAliases = decode_morph_aliases($existing['aliases'] ?? '');
+            $existingNormalizedAliases = decode_morph_aliases($existing['normalized_aliases'] ?? '');
+
+            $needsUpdate = false;
+            foreach (['display_name', 'species_name', 'morph_type', 'description', 'source_url'] as $field) {
+                $existingValue = $existing[$field] ?? null;
+                if ($existingValue != $prepared[$field]) {
+                    $needsUpdate = true;
+                    break;
+                }
+            }
+
+            if (!$needsUpdate && ($existingAliases !== $prepared['aliases'] || $existingNormalizedAliases !== $prepared['normalized_aliases'])) {
+                $needsUpdate = true;
+            }
+
+            if ($needsUpdate) {
+                $summary['updated']++;
+                if (!$dryRun) {
+                    $stmt = $pdo->prepare('UPDATE genetic_morphs SET species_name = :species_name, display_name = :display_name, morph_type = :morph_type, aliases = :aliases, normalized_aliases = :normalized_aliases, description = :description, source_url = :source_url, updated_at = CURRENT_TIMESTAMP WHERE id = :id');
+                    $stmt->execute([
+                        'species_name' => $prepared['species_name'],
+                        'display_name' => $prepared['display_name'],
+                        'morph_type' => $prepared['morph_type'],
+                        'aliases' => $aliasesJson,
+                        'normalized_aliases' => $normalizedAliasesJson,
+                        'description' => $prepared['description'],
+                        'source_url' => $prepared['source_url'],
+                        'id' => $existing['id'],
+                    ]);
+
+                    $updatedRecord = array_merge($existing, [
+                        'species_name' => $prepared['species_name'],
+                        'display_name' => $prepared['display_name'],
+                        'morph_type' => $prepared['morph_type'],
+                        'aliases' => $aliasesJson,
+                        'normalized_aliases' => $normalizedAliasesJson,
+                        'description' => $prepared['description'],
+                        'source_url' => $prepared['source_url'],
+                    ]);
+                    update_morph_index_entry($index, $updatedRecord);
+                } else {
+                    $updatedRecord = array_merge($existing, [
+                        'species_name' => $prepared['species_name'],
+                        'display_name' => $prepared['display_name'],
+                        'morph_type' => $prepared['morph_type'],
+                        'aliases' => $aliasesJson,
+                        'normalized_aliases' => $normalizedAliasesJson,
+                        'description' => $prepared['description'],
+                        'source_url' => $prepared['source_url'],
+                    ]);
+                    update_morph_index_entry($index, $updatedRecord);
+                }
+
+                if (count($previewRows) < $previewLimit) {
+                    $previewRows[] = prepare_morph_preview_row($prepared, 'update');
+                }
+            } else {
+                $summary['unchanged']++;
+                if (count($previewRows) < $previewLimit) {
+                    $previewRows[] = prepare_morph_preview_row($prepared, 'unchanged');
+                }
+            }
+        }
+
+        if (!$dryRun) {
+            $pdo->commit();
+        }
+    } catch (Throwable $exception) {
+        if (!$dryRun && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $exception;
+    }
+
+    return [
+        'summary' => $summary,
+        'preview' => array_slice($previewRows, 0, $previewLimit),
+    ];
+}
