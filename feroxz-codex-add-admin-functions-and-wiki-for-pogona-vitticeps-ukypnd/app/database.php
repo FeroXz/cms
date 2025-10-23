@@ -52,6 +52,12 @@ function initialize_database(PDO $pdo): void
         is_private INTEGER NOT NULL DEFAULT 0,
         is_showcased INTEGER NOT NULL DEFAULT 0,
         is_piebald INTEGER NOT NULL DEFAULT 0,
+        sex TEXT,
+        status TEXT,
+        price TEXT,
+        sire_id INTEGER,
+        dam_id INTEGER,
+        admin_notes TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(owner_id) REFERENCES users(id)
     )');
@@ -67,6 +73,24 @@ function initialize_database(PDO $pdo): void
     if (!in_array('genetics_profile', $animalColumnNames, true)) {
         $pdo->exec('ALTER TABLE animals ADD COLUMN genetics_profile TEXT');
     }
+    if (!in_array('sex', $animalColumnNames, true)) {
+        $pdo->exec('ALTER TABLE animals ADD COLUMN sex TEXT');
+    }
+    if (!in_array('status', $animalColumnNames, true)) {
+        $pdo->exec('ALTER TABLE animals ADD COLUMN status TEXT');
+    }
+    if (!in_array('price', $animalColumnNames, true)) {
+        $pdo->exec('ALTER TABLE animals ADD COLUMN price TEXT');
+    }
+    if (!in_array('sire_id', $animalColumnNames, true)) {
+        $pdo->exec('ALTER TABLE animals ADD COLUMN sire_id INTEGER');
+    }
+    if (!in_array('dam_id', $animalColumnNames, true)) {
+        $pdo->exec('ALTER TABLE animals ADD COLUMN dam_id INTEGER');
+    }
+    if (!in_array('admin_notes', $animalColumnNames, true)) {
+        $pdo->exec('ALTER TABLE animals ADD COLUMN admin_notes TEXT');
+    }
 
     $pdo->exec('CREATE TABLE IF NOT EXISTS adoption_listings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,6 +105,8 @@ function initialize_database(PDO $pdo): void
         image_path TEXT,
         status TEXT NOT NULL DEFAULT "available",
         contact_email TEXT,
+        gender TEXT,
+        price_amount INTEGER,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(animal_id) REFERENCES animals(id)
     )');
@@ -93,6 +119,20 @@ function initialize_database(PDO $pdo): void
     if (!in_array('genetics_profile', $adoptionColumnNames, true)) {
         $pdo->exec('ALTER TABLE adoption_listings ADD COLUMN genetics_profile TEXT');
     }
+    if (!in_array('gender', $adoptionColumnNames, true)) {
+        $pdo->exec('ALTER TABLE adoption_listings ADD COLUMN gender TEXT');
+    }
+    if (!in_array('price_amount', $adoptionColumnNames, true)) {
+        $pdo->exec('ALTER TABLE adoption_listings ADD COLUMN price_amount INTEGER');
+    }
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS gallery_collections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        description TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )');
 
     $pdo->exec('CREATE TABLE IF NOT EXISTS adoption_inquiries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

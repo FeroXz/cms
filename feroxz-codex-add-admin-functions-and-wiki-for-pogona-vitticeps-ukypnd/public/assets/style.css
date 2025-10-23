@@ -3,9 +3,9 @@
   --surface-soft: rgba(15, 23, 42, 0.58);
   --surface-strong: rgba(15, 23, 42, 0.92);
   --border: rgba(148, 163, 184, 0.25);
-  --border-strong: rgba(34, 211, 238, 0.45);
-  --accent: #22d3ee;
-  --accent-strong: #06b6d4;
+  --border-strong: rgba(251, 146, 60, 0.45);
+  --accent: #fb923c;
+  --accent-strong: #f97316;
   --text: #e2e8f0;
   --text-muted: #94a3b8;
   --success: #34d399;
@@ -1109,4 +1109,212 @@ input[type="checkbox"] {
   .media-manager__controls {
     justify-content: flex-start;
   }
+}
+
+.dashboard-kpis {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.kpi-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.recent-media-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.recent-media-item {
+  border-radius: 1.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(8, 47, 73, 0.35);
+}
+
+.recent-media-item img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+}
+
+.recent-media-meta {
+  padding: 0.75rem 1rem;
+}
+
+.recent-media-meta h3 {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.lightbox,
+.command-palette {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.lightbox.hidden,
+.command-palette.hidden {
+  display: none;
+}
+
+.lightbox-backdrop,
+.command-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+}
+
+.lightbox-content,
+.command-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 1.5rem;
+  box-shadow: 0 40px 90px rgba(8, 47, 73, 0.45);
+}
+
+.lightbox-content {
+  padding: 1.5rem;
+  max-width: min(90vw, 960px);
+}
+
+.lightbox-content img {
+  max-width: 100%;
+  border-radius: 1rem;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: var(--text);
+  border-radius: 999px;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.command-panel {
+  width: min(640px, 95vw);
+  padding: 0;
+  overflow: hidden;
+}
+
+.command-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.command-header input {
+  flex: 1;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 0.65rem 0.85rem;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.command-header input:focus {
+  outline: none;
+  border-color: rgba(251, 146, 60, 0.6);
+  box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.25);
+}
+
+.command-hint {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.6rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.command-body {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.command-results {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+}
+
+.command-item a {
+  display: grid;
+  gap: 0.25rem;
+  grid-template-columns: auto 1fr;
+  padding: 0.75rem 1.25rem;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.command-item a:hover,
+.command-item a:focus {
+  background: rgba(251, 146, 60, 0.12);
+  outline: none;
+}
+
+.command-type {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(251, 146, 60, 0.85);
+  align-self: center;
+}
+
+.command-title {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.command-subtitle {
+  grid-column: 2;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.command-empty {
+  display: none;
+  padding: 1.5rem 1.25rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.command-footer {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.command-footer kbd {
+  display: inline-block;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.4rem;
+  margin: 0 0.2rem;
+  background: rgba(15, 23, 42, 0.65);
+  color: var(--text);
+  font-size: 0.65rem;
 }

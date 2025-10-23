@@ -2,44 +2,54 @@
 <section class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
 <h1>Admin-Dashboard</h1>
 <?php include __DIR__ . '/nav.php'; ?>
-<div class="grid cards">
+<div class="grid cards dashboard-kpis">
     <div class="card">
-        <h3>Aktive Tiere</h3>
-        <p><?= count($animals) ?> Datensätze</p>
+        <h3>Tiere gesamt</h3>
+        <p class="kpi-value"><?= count($animals) ?></p>
+        <p class="kpi-meta">davon <?= (int)($animalStatusCounts['available'] ?? 0) ?> verfügbar</p>
     </div>
     <div class="card">
-        <h3>Abgabe-Einträge</h3>
-        <p><?= count($listings) ?> Inserate</p>
+        <h3>Abgabe offen</h3>
+        <p class="kpi-value"><?= (int)($listingStatusCounts['available'] ?? 0) ?></p>
+        <p class="kpi-meta">reserviert: <?= (int)($listingStatusCounts['reserved'] ?? 0) ?></p>
     </div>
     <div class="card">
-        <h3>Neue Anfragen</h3>
-        <p><?= count($inquiries) ?> Nachrichten</p>
+        <h3>Vermittelt</h3>
+        <p class="kpi-value"><?= (int)($listingStatusCounts['adopted'] ?? 0) ?></p>
+        <p class="kpi-meta">verkauft: <?= (int)($animalStatusCounts['sold'] ?? 0) ?></p>
     </div>
     <div class="card">
-        <h3>Seiten</h3>
-        <p><?= count($pages) ?> Einträge</p>
-    </div>
-    <div class="card">
-        <h3>News</h3>
-        <p><?= count($newsPosts) ?> Beiträge</p>
-    </div>
-    <div class="card">
-        <h3>Zuchtpläne</h3>
-        <p><?= count($breedingPlans) ?> Projekte</p>
-    </div>
-    <div class="card">
-        <h3>Pflegeartikel</h3>
-        <p><?= count($careArticles) ?> Artikel</p>
-    </div>
-    <div class="card">
-        <h3>Genetische Arten</h3>
-        <p><?= isset($geneticSpecies) ? count($geneticSpecies) : 0 ?> Datensätze</p>
-    </div>
-    <div class="card">
-        <h3>Gene</h3>
-        <p><?= isset($geneticGenes) ? count($geneticGenes) : 0 ?> Einträge</p>
+        <h3>Neue Medien</h3>
+        <p class="kpi-value"><?= (int)$recentMediaCount ?></p>
+        <p class="kpi-meta">letzte 7 Tage</p>
     </div>
 </div>
+
+<section style="margin-top:2rem;">
+    <h2>Letzte Uploads</h2>
+    <div class="card">
+        <?php if (empty($recentMedia)): ?>
+            Keine neuen Uploads in den letzten sieben Tagen.
+        <?php else: ?>
+            <div class="recent-media-grid">
+                <?php foreach ($recentMedia as $media): ?>
+                    <article class="recent-media-item">
+                        <?php $thumb = $media['urls']['thumb'] ?? $media['urls']['medium'] ?? $media['urls']['original']; ?>
+                        <?php if ($thumb): ?>
+                            <img src="<?= htmlspecialchars($thumb) ?>" alt="<?= htmlspecialchars($media['alt'] ?? $media['fileName']) ?>" loading="lazy">
+                        <?php endif; ?>
+                        <div class="recent-media-meta">
+                            <h3><?= htmlspecialchars($media['fileName']) ?></h3>
+                            <?php if (!empty($media['ownerType'])): ?>
+                                <p><?= htmlspecialchars(ucfirst($media['ownerType'])) ?><?= $media['ownerId'] ? ' #' . (int)$media['ownerId'] : '' ?></p>
+                            <?php endif; ?>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+</section>
 
 <section style="margin-top:2rem;">
     <h2>Letzte Anfragen</h2>

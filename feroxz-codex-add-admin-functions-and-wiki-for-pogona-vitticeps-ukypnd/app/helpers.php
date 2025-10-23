@@ -379,6 +379,109 @@ function normalize_flag($value): int
     return $normalized ? 1 : 0;
 }
 
+function normalize_sex($value): ?string
+{
+    if ($value === null) {
+        return null;
+    }
+
+    if (is_string($value)) {
+        $normalized = strtolower(trim($value));
+    } elseif (is_int($value)) {
+        $normalized = (string)$value;
+    } else {
+        return null;
+    }
+
+    $map = [
+        'm' => 'male',
+        'male' => 'male',
+        '1' => 'male',
+        'f' => 'female',
+        'w' => 'female',
+        'female' => 'female',
+        '0' => 'female',
+        'unknown' => 'unknown',
+        'u' => 'unknown',
+        'x' => 'unknown',
+    ];
+
+    return $map[$normalized] ?? null;
+}
+
+function normalize_animal_status($value): ?string
+{
+    if ($value === null) {
+        return null;
+    }
+
+    $normalized = strtolower(trim((string)$value));
+    $allowed = ['available', 'reserved', 'holdback', 'sold', 'not-for-sale'];
+    return in_array($normalized, $allowed, true) ? $normalized : null;
+}
+
+function normalize_species_slug(?string $value): ?string
+{
+    if ($value === null) {
+        return null;
+    }
+    $value = trim($value);
+    if ($value === '') {
+        return null;
+    }
+    return slugify($value);
+}
+
+function normalize_price_to_cents($value): ?int
+{
+    if ($value === null) {
+        return null;
+    }
+
+    $stringValue = trim((string)$value);
+    if ($stringValue === '') {
+        return null;
+    }
+
+    $normalized = str_replace(['€', 'eur', 'EUR'], '', $stringValue);
+    if (preg_match('/-?\d+[\d\.,]*/', $normalized, $matches)) {
+        $number = $matches[0];
+    } else {
+        return null;
+    }
+
+    $number = str_replace([' ', ','], ['', '.'], $number);
+    if (substr_count($number, '.') > 1) {
+        $parts = explode('.', $number);
+        $decimal = array_pop($parts);
+        $number = implode('', $parts) . '.' . $decimal;
+    }
+
+    if (!is_numeric($number)) {
+        return null;
+    }
+
+    return (int)round(((float)$number) * 100);
+}
+
+function format_price_from_cents(?int $cents): ?string
+{
+    if ($cents === null) {
+        return null;
+    }
+
+    $amount = $cents / 100;
+    return number_format($amount, 2, ',', '.') . ' €';
+}
+
+function json_response($data, int $status = 200): void
+{
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 function parse_partial_date(?string $value): array
 {
     if (!$value) {

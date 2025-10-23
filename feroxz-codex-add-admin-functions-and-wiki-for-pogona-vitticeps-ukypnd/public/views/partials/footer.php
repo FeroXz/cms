@@ -12,8 +12,24 @@
         </div>
     </div>
 </footer>
+<div class="command-palette hidden" data-command-palette>
+    <div class="command-backdrop" data-command-close></div>
+    <div class="command-panel" role="dialog" aria-modal="true" aria-labelledby="command-title">
+        <div class="command-header">
+            <label for="command-input" id="command-title" class="sr-only">Schnellsuche</label>
+            <input id="command-input" type="search" placeholder="Tiere, Morphe, News oder Wiki durchsuchen…" autocomplete="off" data-command-input>
+            <span class="command-hint">Esc</span>
+        </div>
+        <div class="command-body">
+            <ul class="command-results" data-command-results></ul>
+            <p class="command-empty" data-command-empty>Keine Ergebnisse gefunden.</p>
+        </div>
+        <div class="command-footer">Tippe zum Öffnen: <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>K</kbd></div>
+    </div>
+</div>
 <script>
     (function () {
+        const BASE_URL = <?= json_encode(rtrim(BASE_URL, '/')) ?>;
         const mobileToggle = document.querySelector('[data-mobile-nav-toggle]');
         const mobilePanel = document.querySelector('[data-mobile-nav-panel]');
         if (mobileToggle && mobilePanel) {
@@ -128,6 +144,125 @@
                 closeAll();
             }
         });
+
+        const palette = document.querySelector('[data-command-palette]');
+        if (palette) {
+            const overlay = palette.querySelector('[data-command-close]');
+            const input = palette.querySelector('[data-command-input]');
+            const resultsContainer = palette.querySelector('[data-command-results]');
+            const emptyState = palette.querySelector('[data-command-empty]');
+            let abortController = null;
+
+            function closePalette() {
+                palette.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+                if (input) {
+                    input.value = '';
+                }
+                if (resultsContainer) {
+                    resultsContainer.innerHTML = '';
+                }
+                if (emptyState) {
+                    emptyState.classList.add('hidden');
+                }
+            }
+
+            function renderResults(items) {
+                if (!resultsContainer) {
+                    return;
+                }
+                resultsContainer.innerHTML = '';
+                if (!items.length) {
+                    if (emptyState) {
+                        emptyState.classList.remove('hidden');
+                    }
+                    return;
+                }
+                if (emptyState) {
+                    emptyState.classList.add('hidden');
+                }
+                items.forEach((item) => {
+                    const entry = document.createElement('li');
+                    entry.className = 'command-item';
+                    entry.innerHTML = `<a href="${item.url}"><span class="command-type">${item.type}</span><span class="command-title">${item.title}</span><span class="command-subtitle">${item.subtitle || ''}</span></a>`;
+                    resultsContainer.appendChild(entry);
+                });
+            }
+
+            async function performSearch(query) {
+                if (!resultsContainer) {
+                    return;
+                }
+                if (abortController) {
+                    abortController.abort();
+                }
+                if (!query || query.length < 2) {
+                    resultsContainer.innerHTML = '';
+                    if (emptyState) {
+                        emptyState.classList.add('hidden');
+                    }
+                    return;
+                }
+                abortController = new AbortController();
+                try {
+                    const response = await fetch(`${BASE_URL}/index.php?route=api/search&q=${encodeURIComponent(query)}`, {
+                        signal: abortController.signal,
+                    });
+                    if (!response.ok) {
+                        throw new Error('Suche fehlgeschlagen');
+                    }
+                    const data = await response.json();
+                    renderResults(Array.isArray(data.items) ? data.items : []);
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+                    renderResults([]);
+                    if (emptyState) {
+                        emptyState.textContent = 'Fehler bei der Suche.';
+                        emptyState.classList.remove('hidden');
+                    }
+                }
+            }
+
+            let debounceTimer = null;
+            if (input) {
+                input.addEventListener('input', function () {
+                    const value = this.value.trim();
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => performSearch(value), 180);
+                });
+            }
+
+            function openPalette() {
+                palette.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }
+
+            document.addEventListener('keydown', (event) => {
+                const key = event.key.toLowerCase();
+                if ((event.metaKey || event.ctrlKey) && key === 'k') {
+                    event.preventDefault();
+                    openPalette();
+                }
+                if (key === 'escape' && !palette.classList.contains('hidden')) {
+                    closePalette();
+                }
+            });
+
+            if (overlay) {
+                overlay.addEventListener('click', closePalette);
+            }
+            palette.addEventListener('click', (event) => {
+                if (event.target.dataset.commandClose !== undefined) {
+                    closePalette();
+                }
+            });
+        }
     })();
 </script>
 <?php if (($currentRoute ?? '') === 'genetics'): ?>

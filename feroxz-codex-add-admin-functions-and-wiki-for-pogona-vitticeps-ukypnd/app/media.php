@@ -172,3 +172,97 @@ function ensure_media_owner_allowed(?string $ownerType): bool
 {
     return $ownerType === null || in_array($ownerType, MEDIA_OWNER_TYPES, true);
 }
+
+function get_gallery_collections(PDO $pdo): array
+{
+    $collections = $pdo->query('SELECT * FROM gallery_collections ORDER BY name COLLATE NOCASE ASC')->fetchAll();
+    return array_map(static function ($row) {
+        return [
+            'id' => (int)$row['id'],
+            'name' => $row['name'],
+            'slug' => $row['slug'],
+            'description' => $row['description'] ?? null,
+        ];
+    }, $collections ?: []);
+}
+
+function get_gallery_collection_by_slug(PDO $pdo, string $slug): ?array
+{
+    $stmt = $pdo->prepare('SELECT * FROM gallery_collections WHERE slug = :slug');
+    $stmt->execute(['slug' => $slug]);
+    $row = $stmt->fetch();
+    return $row ? [
+        'id' => (int)$row['id'],
+        'name' => $row['name'],
+        'slug' => $row['slug'],
+        'description' => $row['description'] ?? null,
+    ] : null;
+}
+
+function get_gallery_media(PDO $pdo, ?int $collectionId = null, int $limit = 0, int $offset = 0): array
+{
+    $sql = 'SELECT * FROM media WHERE owner_type = "gallery"';
+    $params = [];
+    if ($collectionId !== null) {
+        $sql .= ' AND owner_id = :collection_id';
+        $params['collection_id'] = $collectionId;
+    }
+    $sql .= ' ORDER BY sort_order ASC, created_at DESC';
+    if ($limit > 0) {
+        $sql .= ' LIMIT :limit';
+    }
+    if ($offset > 0) {
+        $sql .= ' OFFSET :offset';
+    }
+
+    $stmt = $pdo->prepare($sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue(':' . $key, $value, PDO::PARAM_INT);
+    }
+    if ($limit > 0) {
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    }
+    if ($offset > 0) {
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    }
+    $stmt->execute();
+    $rows = $stmt->fetchAll();
+    return array_map('format_media_row', $rows ?: []);
+}
+
+function count_gallery_media(PDO $pdo, ?int $collectionId = null): int
+{
+    $sql = 'SELECT COUNT(*) FROM media WHERE owner_type = "gallery"';
+    $params = [];
+    if ($collectionId !== null) {
+        $sql .= ' AND owner_id = :collection_id';
+        $params['collection_id'] = $collectionId;
+    }
+    $stmt = $pdo->prepare($sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue(':' . $key, $value, PDO::PARAM_INT);
+    }
+    $stmt->execute();
+    return (int)$stmt->fetchColumn();
+}
+
+function get_recent_media(PDO $pdo, int $days = 7, int $limit = 8): array
+{
+    $modifier = sprintf('-%d days', max(0, $days));
+    $sql = 'SELECT * FROM media WHERE datetime(created_at) >= datetime("now", :modifier) ORDER BY datetime(created_at) DESC LIMIT :limit';
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(':modifier', $modifier, PDO::PARAM_STR);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    $rows = $stmt->fetchAll();
+    return array_map('format_media_row', $rows ?: []);
+}
+
+function count_recent_media(PDO $pdo, int $days = 7): int
+{
+    $modifier = sprintf('-%d days', max(0, $days));
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM media WHERE datetime(created_at) >= datetime("now", :modifier)');
+    $stmt->bindValue(':modifier', $modifier, PDO::PARAM_STR);
+    $stmt->execute();
+    return (int)$stmt->fetchColumn();
+}

@@ -16,9 +16,9 @@
                             700: '#1e293b',
                         },
                         brand: {
-                            400: '#22d3ee',
-                            500: '#06b6d4',
-                            600: '#0891b2',
+                            400: '#fb923c',
+                            500: '#f97316',
+                            600: '#ea580c',
                         },
                     },
                     boxShadow: {
@@ -72,7 +72,9 @@
         ?>
         <nav class="hidden items-center gap-2 text-sm font-medium lg:flex" data-desktop-nav>
             <a href="<?= BASE_URL ?>/index.php" class="<?= ($currentRoute === 'home') ? $navLinkActive : $navLinkBase ?>">Start</a>
-            <a href="<?= BASE_URL ?>/index.php?route=animals" class="<?= ($currentRoute === 'animals') ? $navLinkActive : $navLinkBase ?>">Tierübersicht</a>
+            <a href="<?= BASE_URL ?>/index.php?route=animals" class="<?= ($currentRoute === 'animals' || $currentRoute === 'animal') ? $navLinkActive : $navLinkBase ?>">Tierübersicht</a>
+            <a href="<?= BASE_URL ?>/index.php?route=gallery" class="<?= ($currentRoute === 'gallery') ? $navLinkActive : $navLinkBase ?>">Galerie</a>
+            <a href="<?= BASE_URL ?>/index.php?route=wiki" class="<?= ($currentRoute === 'wiki' || $currentRoute === 'care-guide' || $currentRoute === 'care-article') ? $navLinkActive : $navLinkBase ?>">Wiki</a>
             <a href="<?= BASE_URL ?>/index.php?route=news" class="<?= ($currentRoute === 'news') ? $navLinkActive : $navLinkBase ?>">Neuigkeiten</a>
             <div class="relative" data-nav-group>
                 <?php $isCareActive = ($currentRoute === 'care-guide' || $currentRoute === 'care-article'); ?>
@@ -134,7 +136,9 @@
     <div class="hidden lg:hidden" data-mobile-nav-panel>
         <nav class="mx-4 mb-4 space-y-2 rounded-2xl border border-white/5 bg-night-900/95 p-4 text-sm shadow-lg shadow-brand-600/10">
             <a href="<?= BASE_URL ?>/index.php" class="<?= ($currentRoute === 'home') ? $mobileLinkActive : $mobileLinkBase ?>">Start</a>
-            <a href="<?= BASE_URL ?>/index.php?route=animals" class="<?= ($currentRoute === 'animals') ? $mobileLinkActive : $mobileLinkBase ?>">Tierübersicht</a>
+            <a href="<?= BASE_URL ?>/index.php?route=animals" class="<?= ($currentRoute === 'animals' || $currentRoute === 'animal') ? $mobileLinkActive : $mobileLinkBase ?>">Tierübersicht</a>
+            <a href="<?= BASE_URL ?>/index.php?route=gallery" class="<?= ($currentRoute === 'gallery') ? $mobileLinkActive : $mobileLinkBase ?>">Galerie</a>
+            <a href="<?= BASE_URL ?>/index.php?route=wiki" class="<?= ($currentRoute === 'wiki' || $currentRoute === 'care-guide' || $currentRoute === 'care-article') ? $mobileLinkActive : $mobileLinkBase ?>">Wiki</a>
             <a href="<?= BASE_URL ?>/index.php?route=news" class="<?= ($currentRoute === 'news') ? $mobileLinkActive : $mobileLinkBase ?>">Neuigkeiten</a>
             <details class="group" <?= $isCareActive ? 'open' : '' ?>>
                 <summary class="<?= $mobileLinkBase ?> flex cursor-pointer list-none items-center justify-between">

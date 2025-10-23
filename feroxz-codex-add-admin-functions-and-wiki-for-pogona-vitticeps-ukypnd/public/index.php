@@ -36,8 +36,48 @@ switch ($route) {
 
     case 'animals':
         $settings = get_all_settings($pdo);
-        $animals = get_public_animals($pdo);
-        view('animals/index', compact('settings', 'animals'));
+        $filterOptions = get_public_animal_filters($pdo);
+        $filters = parse_public_animal_filters($pdo, $_GET);
+        $sort = parse_public_animal_sort($_GET);
+        $animals = get_public_animals_filtered($pdo, $filters, $sort);
+        $activeFilterCount = count(array_filter([
+            $filters['species'],
+            $filters['sex'],
+            $filters['status'],
+            $filters['gene'],
+            $filters['price_min'],
+            $filters['price_max'],
+        ], static fn($value) => !empty($value)));
+        view('animals/index', [
+            'settings' => $settings,
+            'animals' => $animals,
+            'filterOptions' => $filterOptions,
+            'filters' => $filters,
+            'sort' => $sort,
+            'activeFilterCount' => $activeFilterCount,
+        ]);
+        break;
+
+    case 'animal':
+        $settings = get_all_settings($pdo);
+        $animalId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        if ($animalId <= 0) {
+            http_response_code(404);
+            view('errors/404', compact('settings'));
+            break;
+        }
+        $animal = get_public_animal_detail($pdo, $animalId);
+        if (!$animal) {
+            http_response_code(404);
+            view('errors/404', compact('settings'));
+            break;
+        }
+        $showAdminNotes = current_user() && is_authorized('can_manage_animals');
+        view('animals/show', [
+            'settings' => $settings,
+            'animal' => $animal,
+            'showAdminNotes' => $showAdminNotes,
+        ]);
         break;
 
     case 'my-animals':
@@ -56,8 +96,8 @@ switch ($route) {
 
     case 'adoption':
         $settings = get_all_settings($pdo);
-        $listings = get_public_listings($pdo);
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_csrf_token('adoption');
             $listingId = (int)($_POST['listing_id'] ?? 0);
             $name = trim($_POST['name'] ?? '');
             $email = trim($_POST['email'] ?? '');
@@ -82,7 +122,43 @@ switch ($route) {
         }
         $flashSuccess = flash('success');
         $flashError = flash('error');
-        view('adoption/index', compact('settings', 'listings', 'flashSuccess', 'flashError'));
+        $detailId = isset($_GET['listing']) ? (int)$_GET['listing'] : 0;
+        if ($detailId > 0) {
+            $listing = get_public_listing_detail($pdo, $detailId);
+            if (!$listing) {
+                http_response_code(404);
+                view('errors/404', ['settings' => $settings]);
+                break;
+            }
+            view('adoption/show', [
+                'settings' => $settings,
+                'listing' => $listing,
+                'flashSuccess' => $flashSuccess,
+                'flashError' => $flashError,
+            ]);
+            break;
+        }
+
+        $filterOptions = get_public_listing_filters($pdo);
+        $filters = parse_public_listing_filters($pdo, $_GET);
+        $listings = get_filtered_public_listings($pdo, $filters);
+        $activeFilterCount = count(array_filter([
+            $filters['species'],
+            $filters['status'],
+            $filters['gender'],
+            $filters['gene'],
+            $filters['price_min'],
+            $filters['price_max'],
+        ], static fn($value) => !empty($value)));
+        view('adoption/index', [
+            'settings' => $settings,
+            'listings' => $listings,
+            'flashSuccess' => $flashSuccess,
+            'flashError' => $flashError,
+            'filterOptions' => $filterOptions,
+            'filters' => $filters,
+            'activeFilterCount' => $activeFilterCount,
+        ]);
         break;
 
     case 'page':
@@ -118,6 +194,71 @@ switch ($route) {
         } else {
             $newsPosts = get_published_news($pdo);
             view('news/index', compact('settings', 'newsPosts'));
+        }
+        break;
+
+    case 'gallery':
+        $settings = get_all_settings($pdo);
+        $collections = get_gallery_collections($pdo);
+        $selectedSlug = $_GET['collection'] ?? null;
+        $selectedCollection = null;
+        if ($selectedSlug) {
+            if ($selectedSlug !== 'all') {
+                $selectedCollection = get_gallery_collection_by_slug($pdo, $selectedSlug);
+                if (!$selectedCollection) {
+                    http_response_code(404);
+                    view('errors/404', ['settings' => $settings]);
+                    break;
+                }
+            }
+        }
+        $collectionId = $selectedCollection['id'] ?? null;
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 12;
+        $total = count_gallery_media($pdo, $collectionId);
+        $mediaItems = get_gallery_media($pdo, $collectionId, $perPage, ($page - 1) * $perPage);
+        $hasMore = ($page * $perPage) < $total;
+
+        if (($_GET['format'] ?? '') === 'json') {
+            json_response([
+                'items' => $mediaItems,
+                'page' => $page,
+                'hasMore' => $hasMore,
+            ]);
+        }
+
+        view('gallery/index', [
+            'settings' => $settings,
+            'collections' => $collections,
+            'selectedCollection' => $selectedCollection,
+            'mediaItems' => $mediaItems,
+            'page' => $page,
+            'hasMore' => $hasMore,
+        ]);
+        break;
+
+    case 'wiki':
+        $settings = get_all_settings($pdo);
+        $slug = $_GET['slug'] ?? null;
+        if ($slug) {
+            $article = get_care_article_by_slug($pdo, $slug);
+            if (!$article || (!$article['is_published'] && (!current_user() || !is_authorized('can_manage_settings')))) {
+                http_response_code(404);
+                view('errors/404', ['settings' => $settings]);
+                break;
+            }
+            $mediaItems = get_media_for_owner($pdo, 'wiki', (int)$article['id']);
+            view('wiki/show', [
+                'settings' => $settings,
+                'article' => $article,
+                'mediaItems' => $mediaItems,
+            ]);
+        } else {
+            $careArticles = get_published_care_articles($pdo);
+            view('wiki/index', [
+                'settings' => $settings,
+                'articles' => $careArticles,
+            ]);
         }
         break;
 
@@ -418,7 +559,49 @@ switch ($route) {
         $careArticles = get_care_articles($pdo);
         $geneticSpecies = get_genetic_species($pdo);
         $geneticGenes = get_all_genetic_genes($pdo);
-        view('admin/dashboard', compact('settings', 'animals', 'listings', 'inquiries', 'pages', 'newsPosts', 'breedingPlans', 'careArticles', 'geneticSpecies', 'geneticGenes'));
+        $animalStatusCounts = [
+            'available' => 0,
+            'reserved' => 0,
+            'sold' => 0,
+        ];
+        foreach ($animals as $animal) {
+            $status = strtolower((string)($animal['status'] ?? ''));
+            if (isset($animalStatusCounts[$status])) {
+                $animalStatusCounts[$status]++;
+            }
+        }
+
+        $listingStatusCounts = [
+            'available' => 0,
+            'reserved' => 0,
+            'adopted' => 0,
+        ];
+        foreach ($listings as $listing) {
+            $status = strtolower((string)($listing['status'] ?? 'available'));
+            if (isset($listingStatusCounts[$status])) {
+                $listingStatusCounts[$status]++;
+            }
+        }
+
+        $recentMedia = get_recent_media($pdo, 7, 8);
+        $recentMediaCount = count_recent_media($pdo, 7);
+
+        view('admin/dashboard', [
+            'settings' => $settings,
+            'animals' => $animals,
+            'listings' => $listings,
+            'inquiries' => $inquiries,
+            'pages' => $pages,
+            'newsPosts' => $newsPosts,
+            'breedingPlans' => $breedingPlans,
+            'careArticles' => $careArticles,
+            'geneticSpecies' => $geneticSpecies,
+            'geneticGenes' => $geneticGenes,
+            'animalStatusCounts' => $animalStatusCounts,
+            'listingStatusCounts' => $listingStatusCounts,
+            'recentMedia' => $recentMedia,
+            'recentMediaCount' => $recentMediaCount,
+        ]);
         break;
 
     case 'admin/settings':
@@ -1271,6 +1454,13 @@ switch ($route) {
         }
         $flashSuccess = flash('success');
         view('admin/users', compact('users', 'editUser', 'flashSuccess', 'settings'));
+        break;
+
+    case 'api/search':
+        $term = trim($_GET['q'] ?? '');
+        enforce_rate_limit('search:' . ($_SERVER['REMOTE_ADDR'] ?? 'guest'), 20, 60);
+        $items = $term !== '' ? global_search($pdo, $term) : [];
+        json_response(['items' => $items]);
         break;
 
     case 'api/upload':
