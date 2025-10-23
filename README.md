@@ -43,3 +43,6 @@
 - [x] Mediathek-Uploads nutzen eine Drag-&-Drop-Dropzone mit Fortschrittsanzeige und Lightbox-Vorschau für Galerie-Bilder.
 - [x] Tierverwaltung stellt den Bestand als filter- und sortierbare Datentabelle mit Volltextsuche und Statusfiltern dar.
 - [x] Öffentliche Galerie und Admin-Bereich setzen neue Toasts für Systemmeldungen sowie die universelle Lightbox-Komponente ein.
+- [x] Frontend-Navigation, Footer und Layout in Preline UI neu komponiert – inklusive Dropdown-Menüs, Collapse-Navigation und CTA-Styling.
+- [x] Admin-Steuerzentrale auf Flowbite umgestellt mit responsivem Collapse-Menü, User-Dropdown und pillenbasierten Navigationspillen.
+- [x] Globale Version 5.5 veröffentlicht und sämtliche Oberfläche zwischen Preline-Frontend und Flowbite-Backend synchronisiert.
