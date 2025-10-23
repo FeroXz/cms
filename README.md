@@ -14,3 +14,4 @@
 - [x] Zweispaltige Admin-Bereiche reagieren mobilfreundlich und stapeln Inhalte automatisch untereinander.
 - [x] Umfangreiche Hakennasennatter-Genetik inklusive sämtlicher bestätigter Kombinationsmorphe als Referenzkarten.
 - [x] Neues „Nebula Prism“-Theme mit gläsernem Neon-Look, das im Admin-Bereich auswählbar ist.
+- [x] Dropdown-Navigation öffnet auf Touch-Geräten ohne ungewollte Seitenwechsel.
