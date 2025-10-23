@@ -7,6 +7,7 @@ require_once __DIR__ . '/themes.php';
 require_once __DIR__ . '/content.php';
 require_once __DIR__ . '/settings.php';
 require_once __DIR__ . '/animals.php';
+require_once __DIR__ . '/media.php';
 require_once __DIR__ . '/adoption.php';
 require_once __DIR__ . '/users.php';
 require_once __DIR__ . '/pages.php';

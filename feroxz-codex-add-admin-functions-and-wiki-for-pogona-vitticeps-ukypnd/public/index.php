@@ -340,9 +340,14 @@ switch ($route) {
         if (isset($_GET['edit'])) {
             $editPost = get_news_post($pdo, (int)$_GET['edit']);
         }
+        $newsMedia = [];
+        if ($editPost && !empty($editPost['id'])) {
+            $newsMedia = get_media_for_owner($pdo, 'news', (int)$editPost['id']);
+        }
+        $mediaUploadToken = csrf_token();
         $flashSuccess = flash('success');
         $flashError = flash('error');
-        view('admin/news', compact('settings', 'newsPosts', 'editPost', 'flashSuccess', 'flashError'));
+        view('admin/news', compact('settings', 'newsPosts', 'editPost', 'flashSuccess', 'flashError', 'newsMedia', 'mediaUploadToken'));
         break;
 
     case 'admin/animals':
@@ -491,9 +496,14 @@ switch ($route) {
                 }
             }
         }
+        $animalMedia = [];
+        if ($editAnimal && !empty($editAnimal['id'])) {
+            $animalMedia = get_media_for_owner($pdo, 'animal', (int)$editAnimal['id']);
+        }
+        $mediaUploadToken = csrf_token();
         $flashSuccess = flash('success');
         $flashError = flash('error');
-        view('admin/animals', compact('animals', 'users', 'editAnimal', 'flashSuccess', 'flashError', 'settings', 'speciesList', 'speciesGenes'));
+        view('admin/animals', compact('animals', 'users', 'editAnimal', 'flashSuccess', 'flashError', 'settings', 'speciesList', 'speciesGenes', 'animalMedia', 'mediaUploadToken'));
         break;
 
     case 'admin/breeding':
@@ -803,9 +813,14 @@ switch ($route) {
         if (isset($_GET['edit'])) {
             $editArticle = get_care_article($pdo, (int)$_GET['edit']);
         }
+        $wikiMedia = [];
+        if ($editArticle && !empty($editArticle['id'])) {
+            $wikiMedia = get_media_for_owner($pdo, 'wiki', (int)$editArticle['id']);
+        }
+        $mediaUploadToken = csrf_token();
         $flashSuccess = flash('success');
         $flashError = flash('error');
-        view('admin/care', compact('settings', 'careArticles', 'editArticle', 'flashSuccess', 'flashError'));
+        view('admin/care', compact('settings', 'careArticles', 'editArticle', 'flashSuccess', 'flashError', 'wikiMedia', 'mediaUploadToken'));
         break;
 
     case 'admin/genetics':
@@ -956,6 +971,27 @@ switch ($route) {
         ]);
         break;
 
+    case 'admin/genetics/import':
+        require_login();
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            flash('error', 'Keine Berechtigung.');
+            redirect('admin/dashboard');
+        }
+        $settings = get_all_settings($pdo);
+        $csrfToken = csrf_token();
+        $flashSuccess = flash('success');
+        $flashError = flash('error');
+        view('admin/genetics_import', [
+            'settings' => $settings,
+            'csrfToken' => $csrfToken,
+            'flashSuccess' => $flashSuccess,
+            'flashError' => $flashError,
+        ]);
+        break;
+
     case 'admin/inquiries':
         require_login();
         if (!is_authorized('can_manage_adoptions')) {
@@ -1005,6 +1041,359 @@ switch ($route) {
         $flashSuccess = flash('success');
         view('admin/users', compact('users', 'editUser', 'flashSuccess', 'settings'));
         break;
+
+    case 'api/upload':
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            header('Allow: POST');
+            echo json_encode(['status' => 'error', 'message' => 'Methode nicht erlaubt.']);
+            exit;
+        }
+
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_animals') || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Zugriff verweigert.']);
+            exit;
+        }
+
+        $token = $_POST['_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+        if (!verify_csrf_token($token)) {
+            http_response_code(419);
+            echo json_encode(['status' => 'error', 'message' => 'CSRF-Token ungültig oder abgelaufen.']);
+            exit;
+        }
+
+        try {
+            enforce_rate_limit('upload:' . (int)$user['id'], 10, 60);
+        } catch (RuntimeException $exception) {
+            http_response_code(429);
+            echo json_encode(['status' => 'error', 'message' => 'Zu viele Uploads in kurzer Zeit.']);
+            exit;
+        }
+
+        $ownerType = normalize_media_owner_type($_POST['ownerType'] ?? $_POST['owner_type'] ?? null);
+        $ownerId = normalize_nullable_id($_POST['ownerId'] ?? $_POST['owner_id'] ?? null);
+        if ($ownerId !== null && $ownerType === null) {
+            http_response_code(422);
+            echo json_encode(['status' => 'error', 'message' => 'Ungültiger Besitzer-Typ für Medien.']);
+            exit;
+        }
+
+        $filesPayload = $_FILES['files'] ?? ($_FILES['file'] ?? null);
+        if (!$filesPayload) {
+            http_response_code(422);
+            echo json_encode(['status' => 'error', 'message' => 'Keine Dateien übermittelt.']);
+            exit;
+        }
+
+        $files = [];
+        if (is_array($filesPayload['name'] ?? null)) {
+            $count = count($filesPayload['name']);
+            for ($i = 0; $i < $count; $i++) {
+                $files[] = [
+                    'name' => $filesPayload['name'][$i] ?? null,
+                    'type' => $filesPayload['type'][$i] ?? null,
+                    'tmp_name' => $filesPayload['tmp_name'][$i] ?? null,
+                    'error' => $filesPayload['error'][$i] ?? UPLOAD_ERR_NO_FILE,
+                    'size' => $filesPayload['size'][$i] ?? 0,
+                ];
+            }
+        } else {
+            $files[] = $filesPayload;
+        }
+
+        $createdItems = [];
+        foreach ($files as $file) {
+            if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || empty($file['tmp_name'])) {
+                continue;
+            }
+            if (($file['size'] ?? 0) > MEDIA_MAX_FILESIZE_BYTES) {
+                http_response_code(413);
+                echo json_encode(['status' => 'error', 'message' => 'Datei überschreitet die maximale Größe von 20 MB.']);
+                exit;
+            }
+            if (!is_uploaded_file($file['tmp_name'])) {
+                continue;
+            }
+
+            $info = @getimagesize($file['tmp_name']);
+            if (!$info || empty($info['mime']) || !media_mime_is_allowed($info['mime'])) {
+                http_response_code(422);
+                echo json_encode(['status' => 'error', 'message' => 'Unterstützt werden nur JPG, PNG und WebP.']);
+                exit;
+            }
+
+            $storage = media_prepare_storage($file['name'] ?? 'upload', media_extension_from_mime($info['mime']));
+            if (!move_uploaded_file($file['tmp_name'], $storage['original']['absolute'])) {
+                http_response_code(500);
+                echo json_encode(['status' => 'error', 'message' => 'Upload fehlgeschlagen.']);
+                exit;
+            }
+
+            $thumbResult = media_resize_image($storage['original']['absolute'], $storage['thumb']['absolute'], $info['mime'], MEDIA_THUMB_MAX_WIDTH);
+            $mediumResult = media_resize_image($storage['original']['absolute'], $storage['medium']['absolute'], $info['mime'], MEDIA_MEDIUM_MAX_WIDTH);
+            $webpCreated = media_convert_to_webp($storage['original']['absolute'], $storage['webp']['absolute'], $info['mime']);
+
+            if (!$thumbResult) {
+                @unlink($storage['thumb']['absolute']);
+            }
+            if (!$mediumResult) {
+                @unlink($storage['medium']['absolute']);
+            }
+            if (!$webpCreated) {
+                @unlink($storage['webp']['absolute']);
+            }
+
+            $record = create_media_entry($pdo, [
+                'file_name' => $storage['original']['filename'],
+                'type' => $info['mime'],
+                'alt' => '',
+                'width' => $info[0] ?? null,
+                'height' => $info[1] ?? null,
+                'size' => filesize($storage['original']['absolute']),
+                'owner_type' => $ownerType,
+                'owner_id' => $ownerId,
+                'path_original' => $storage['original']['relative'],
+                'path_thumb' => $thumbResult ? $storage['thumb']['relative'] : null,
+                'path_medium' => $mediumResult ? $storage['medium']['relative'] : null,
+                'path_webp' => $webpCreated ? $storage['webp']['relative'] : null,
+            ]);
+
+            if (!empty($record)) {
+                $createdItems[] = $record;
+            }
+        }
+
+        echo json_encode([
+            'status' => 'ok',
+            'items' => $createdItems,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+
+    case 'api/media/order':
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD'] !== 'PATCH') {
+            http_response_code(405);
+            header('Allow: PATCH');
+            echo json_encode(['status' => 'error', 'message' => 'Methode nicht erlaubt.']);
+            exit;
+        }
+
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_animals') || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Zugriff verweigert.']);
+            exit;
+        }
+
+        $payload = json_decode((string)file_get_contents('php://input'), true);
+        if (!is_array($payload)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Ungültige Anfrage.']);
+            exit;
+        }
+
+        $token = $payload['_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+        if (!verify_csrf_token($token)) {
+            http_response_code(419);
+            echo json_encode(['status' => 'error', 'message' => 'CSRF-Token ungültig oder abgelaufen.']);
+            exit;
+        }
+
+        $ownerType = normalize_media_owner_type($payload['ownerType'] ?? $payload['owner_type'] ?? null);
+        $ownerId = normalize_nullable_id($payload['ownerId'] ?? $payload['owner_id'] ?? null);
+        if ($ownerType === null || $ownerId === null) {
+            http_response_code(422);
+            echo json_encode(['status' => 'error', 'message' => 'Sortierung benötigt eine gültige Zuordnung.']);
+            exit;
+        }
+
+        $items = [];
+        if (!empty($payload['items']) && is_array($payload['items'])) {
+            foreach ($payload['items'] as $index => $entry) {
+                if (!is_array($entry)) {
+                    continue;
+                }
+                $id = isset($entry['id']) ? (int)$entry['id'] : 0;
+                if ($id <= 0) {
+                    continue;
+                }
+                $items[] = [
+                    'id' => $id,
+                    'order' => $entry['order'] ?? ($index + 1),
+                ];
+            }
+        }
+
+        update_media_order($pdo, $ownerType, (int)$ownerId, $items);
+        $updated = get_media_for_owner($pdo, $ownerType, (int)$ownerId);
+
+        echo json_encode([
+            'status' => 'ok',
+            'items' => $updated,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+
+    case 'api/media/meta':
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD'] !== 'PATCH') {
+            http_response_code(405);
+            header('Allow: PATCH');
+            echo json_encode(['status' => 'error', 'message' => 'Methode nicht erlaubt.']);
+            exit;
+        }
+
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_animals') || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Zugriff verweigert.']);
+            exit;
+        }
+
+        $payload = json_decode((string)file_get_contents('php://input'), true);
+        if (!is_array($payload)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Ungültige Anfrage.']);
+            exit;
+        }
+
+        $token = $payload['_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+        if (!verify_csrf_token($token)) {
+            http_response_code(419);
+            echo json_encode(['status' => 'error', 'message' => 'CSRF-Token ungültig oder abgelaufen.']);
+            exit;
+        }
+
+        $mediaId = isset($payload['id']) ? (int)$payload['id'] : 0;
+        if ($mediaId <= 0) {
+            http_response_code(422);
+            echo json_encode(['status' => 'error', 'message' => 'Ungültige Medien-ID.']);
+            exit;
+        }
+
+        $alt = (string)($payload['alt'] ?? '');
+        $updated = update_media_alt($pdo, $mediaId, $alt);
+        if (!$updated) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Medium nicht gefunden.']);
+            exit;
+        }
+
+        echo json_encode([
+            'status' => 'ok',
+            'item' => $updated,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+
+    case 'api/import/morphs':
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            header('Allow: POST');
+            echo json_encode(['status' => 'error', 'message' => 'Methode nicht erlaubt.']);
+            exit;
+        }
+
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Zugriff verweigert.']);
+            exit;
+        }
+
+        $token = $_POST['_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+        if (!verify_csrf_token($token)) {
+            http_response_code(419);
+            echo json_encode(['status' => 'error', 'message' => 'CSRF-Token ungültig oder abgelaufen.']);
+            exit;
+        }
+
+        if (empty($_FILES['file']) || empty($_FILES['file']['tmp_name'])) {
+            http_response_code(422);
+            echo json_encode(['status' => 'error', 'message' => 'CSV-Datei fehlt.']);
+            exit;
+        }
+
+        $dryRunFlag = $_GET['dryRun'] ?? $_POST['dryRun'] ?? false;
+        $dryRun = filter_var($dryRunFlag, FILTER_VALIDATE_BOOLEAN);
+
+        $mapping = [];
+        if (!empty($_POST['mapping']) && is_array($_POST['mapping'])) {
+            foreach ($_POST['mapping'] as $key => $value) {
+                if (is_string($key) && $key !== '') {
+                    $mapping[strtolower($key)] = (string)$value;
+                }
+            }
+        }
+
+        try {
+            $result = import_genetic_morphs_from_csv($pdo, $_FILES['file']['tmp_name'], [
+                'dry_run' => $dryRun,
+                'column_map' => $mapping,
+                'preview_limit' => 10,
+            ]);
+            $_SESSION['morph_import_preview'] = [
+                'rows' => $result['preview'],
+                'generated_at' => time(),
+            ];
+
+            echo json_encode([
+                'status' => 'ok',
+                'dryRun' => $dryRun,
+                'summary' => $result['summary'],
+                'preview' => $result['preview'],
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (InvalidArgumentException $exception) {
+            http_response_code(422);
+            echo json_encode([
+                'status' => 'error',
+                'message' => $exception->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (Throwable $exception) {
+            http_response_code(500);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Import fehlgeschlagen.',
+            ], JSON_UNESCAPED_UNICODE);
+        }
+        exit;
+
+    case 'api/import/morphs/sample':
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Zugriff verweigert.']);
+            exit;
+        }
+
+        $rows = get_last_morph_import_preview();
+        if (!$rows) {
+            $rows = get_default_morph_preview_rows();
+        }
+
+        echo json_encode([
+            'status' => 'ok',
+            'rows' => $rows,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
 
     default:
         http_response_code(404);

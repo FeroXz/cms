@@ -76,12 +76,12 @@
             <a href="<?= BASE_URL ?>/index.php?route=news" class="<?= ($currentRoute === 'news') ? $navLinkActive : $navLinkBase ?>">Neuigkeiten</a>
             <div class="relative" data-nav-group>
                 <?php $isCareActive = ($currentRoute === 'care-guide' || $currentRoute === 'care-article'); ?>
-                <button type="button" class="<?= $isCareActive ? $navLinkActive : $navLinkBase ?>" data-nav-trigger>
+                <a href="<?= BASE_URL ?>/index.php?route=care-guide" class="<?= $isCareActive ? $navLinkActive : $navLinkBase ?>" data-nav-trigger>
                     Pflegeleitfaden
                     <svg class="h-4 w-4 transition" data-chevron fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
                     </svg>
-                </button>
+                </a>
                 <div class="nav-dropdown">
                     <a href="<?= BASE_URL ?>/index.php?route=care-guide" class="<?= ($currentRoute === 'care-guide') ? $dropdownLinkActive : $dropdownLinkBase ?>">Übersicht</a>
                     <?php foreach (($navCareArticles ?? []) as $careNav): ?>
@@ -103,10 +103,10 @@
                     $isActive = $parentActive || $childActive;
                 ?>
                 <div class="relative" data-nav-group>
-                    <a href="<?= BASE_URL ?>/index.php?route=page&amp;slug=<?= urlencode($navPage['slug']) ?>" class="<?= $isActive ? $navLinkActive : $navLinkBase ?>">
+                    <a href="<?= BASE_URL ?>/index.php?route=page&amp;slug=<?= urlencode($navPage['slug']) ?>" class="<?= $isActive ? $navLinkActive : $navLinkBase ?>" <?= !empty($navPage['children']) ? 'data-nav-trigger' : '' ?>>
                         <?= htmlspecialchars($navPage['title']) ?>
                         <?php if (!empty($navPage['children'])): ?>
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                            <svg class="h-4 w-4 transition" data-chevron fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
                             </svg>
                         <?php endif; ?>

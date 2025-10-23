@@ -65,6 +65,14 @@
             <label>Inhalt
                 <textarea name="content" class="rich-text" required><?= htmlspecialchars($editPost['content'] ?? '') ?></textarea>
             </label>
+            <?php
+                $componentTitle = 'Medienanhänge';
+                $ownerType = 'news';
+                $ownerId = $editPost['id'] ?? null;
+                $uploadToken = $mediaUploadToken ?? csrf_token();
+                $mediaItems = $newsMedia ?? [];
+                include __DIR__ . '/partials/media_manager.php';
+            ?>
             <label>Veröffentlicht am
                 <input type="datetime-local" name="published_at" value="<?= !empty($editPost['published_at']) ? date('Y-m-d\TH:i', strtotime($editPost['published_at'])) : '' ?>">
             </label>

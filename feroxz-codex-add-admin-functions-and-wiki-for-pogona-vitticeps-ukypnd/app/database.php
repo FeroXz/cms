@@ -212,4 +212,61 @@ function initialize_database(PDO $pdo): void
     if (!in_array('is_reference', $geneColumnNames, true)) {
         $pdo->exec('ALTER TABLE genetic_genes ADD COLUMN is_reference INTEGER NOT NULL DEFAULT 0');
     }
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS genetic_morphs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        species_slug TEXT NOT NULL,
+        species_name TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        normalized_name TEXT NOT NULL,
+        morph_type TEXT NOT NULL,
+        aliases TEXT,
+        normalized_aliases TEXT,
+        description TEXT,
+        source_url TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(species_slug, normalized_name)
+    )');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS media (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_name TEXT NOT NULL,
+        alt TEXT,
+        width INTEGER,
+        height INTEGER,
+        size INTEGER,
+        type TEXT NOT NULL,
+        owner_type TEXT,
+        owner_id INTEGER,
+        path_original TEXT NOT NULL,
+        path_thumb TEXT,
+        path_medium TEXT,
+        path_webp TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )');
+
+    $mediaColumns = $pdo->query('PRAGMA table_info(media)')->fetchAll();
+    $mediaColumnNames = array_column($mediaColumns, 'name');
+    $mediaSchemaUpdates = [
+        'alt' => 'ALTER TABLE media ADD COLUMN alt TEXT',
+        'width' => 'ALTER TABLE media ADD COLUMN width INTEGER',
+        'height' => 'ALTER TABLE media ADD COLUMN height INTEGER',
+        'size' => 'ALTER TABLE media ADD COLUMN size INTEGER',
+        'type' => 'ALTER TABLE media ADD COLUMN type TEXT NOT NULL DEFAULT "image/jpeg"',
+        'owner_type' => 'ALTER TABLE media ADD COLUMN owner_type TEXT',
+        'owner_id' => 'ALTER TABLE media ADD COLUMN owner_id INTEGER',
+        'path_thumb' => 'ALTER TABLE media ADD COLUMN path_thumb TEXT',
+        'path_medium' => 'ALTER TABLE media ADD COLUMN path_medium TEXT',
+        'path_webp' => 'ALTER TABLE media ADD COLUMN path_webp TEXT',
+        'sort_order' => 'ALTER TABLE media ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0',
+        'updated_at' => 'ALTER TABLE media ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP'
+    ];
+    foreach ($mediaSchemaUpdates as $column => $sql) {
+        if (!in_array($column, $mediaColumnNames, true)) {
+            $pdo->exec($sql);
+        }
+    }
 }

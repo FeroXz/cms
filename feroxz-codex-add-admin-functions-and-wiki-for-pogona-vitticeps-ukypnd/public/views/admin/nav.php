@@ -14,7 +14,9 @@
         <a href="<?= BASE_URL ?>/index.php?route=admin/pages" class="<?= $currentRoute === 'admin/pages' ? $linkActive : $linkBase ?>">Seiten</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/news" class="<?= $currentRoute === 'admin/news' ? $linkActive : $linkBase ?>">Neuigkeiten</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/care" class="<?= $currentRoute === 'admin/care' ? $linkActive : $linkBase ?>">Pflegeleitfaden</a>
-        <a href="<?= BASE_URL ?>/index.php?route=admin/genetics" class="<?= $currentRoute === 'admin/genetics' ? $linkActive : $linkBase ?>">Genetik</a>
+        <?php $isGeneticsRoute = $currentRoute === 'admin/genetics' || $currentRoute === 'admin/genetics/import'; ?>
+        <a href="<?= BASE_URL ?>/index.php?route=admin/genetics" class="<?= $isGeneticsRoute && $currentRoute !== 'admin/genetics/import' ? $linkActive : $linkBase ?>">Genetik</a>
+        <a href="<?= BASE_URL ?>/index.php?route=admin/genetics/import" class="<?= $currentRoute === 'admin/genetics/import' ? $linkActive : $linkBase ?>">Morph-Import</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/settings" class="<?= $currentRoute === 'admin/settings' ? $linkActive : $linkBase ?>">Einstellungen</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/content" class="<?= $currentRoute === 'admin/content' ? $linkActive : $linkBase ?>">Texte</a>
     <?php endif; ?>

@@ -1,0 +1,6 @@
+id,name,species,morph,sex,hatch_date,status,price_eur,sire_id,dam_id,notes
+A-001,Nyx,Pogona vitticeps,Leatherback ♀ het Translucent,Female,2022-07-14,available,280,,,"Aktive Esserin, vertraut mit Pinzettenfütterung." 
+A-002,Atlas,Pogona vitticeps,Hypomelanistic Dunner,Male,2021-11-03,reserved,320,,,"Ruhiger Charakter, stammt aus Dunner-Linie 'Solaris'."
+A-003,Sol,Pantherophis guttatus,Amel Motley,Female,2023-05-22,available,180,,,"Farbintensive Kornnatter mit ruhigem Temperament." 
+A-004,Orion,Python regius,Pastel het Clown,Male,2020-09-18,sold,450,BP-Sire-12,BP-Dam-04,"Futterfest auf Frostmäuse, Nachzucht 2020."
+A-005,Lumen,Pogona vitticeps,Translucent Leatherback,Female,2023-06-08,available,360,A-002,A-001,"Glänzende Schuppenstruktur, bevorzugt Dubia-Roaches." 

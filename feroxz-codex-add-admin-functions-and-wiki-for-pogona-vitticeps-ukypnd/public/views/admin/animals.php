@@ -175,6 +175,14 @@
                     <p><a href="<?= BASE_URL . '/' . htmlspecialchars($editAnimal['image_path']) ?>" target="_blank">Aktuelles Bild anzeigen</a></p>
                 <?php endif; ?>
             </label>
+            <?php
+                $componentTitle = 'Galerie & Medien';
+                $ownerType = 'animal';
+                $ownerId = $editAnimal['id'] ?? null;
+                $uploadToken = $mediaUploadToken ?? csrf_token();
+                $mediaItems = $animalMedia ?? [];
+                include __DIR__ . '/partials/media_manager.php';
+            ?>
             <label>Besitzer
                 <select name="owner_id">
                     <option value="">— keiner —</option>

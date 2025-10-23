@@ -143,26 +143,213 @@ function handle_upload(array $file): ?string
         return null;
     }
 
-    ensure_directory(UPLOAD_PATH);
-
-    $finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : false;
-    $mimeType = $finfo ? finfo_file($finfo, $file['tmp_name']) : null;
-    if ($finfo) {
-        finfo_close($finfo);
-    }
-    if ($mimeType && strpos($mimeType, 'image/') !== 0) {
+    $info = @getimagesize($file['tmp_name']);
+    if (!$info || empty($info['mime']) || !media_mime_is_allowed($info['mime'])) {
         return null;
     }
 
-    $originalName = $file['name'] ?? 'upload';
-    $sanitizedName = preg_replace('/[^a-zA-Z0-9\.\-]/', '_', $originalName);
-    $filename = bin2hex(random_bytes(8)) . '-' . $sanitizedName;
-    $destination = UPLOAD_PATH . '/' . $filename;
+    $extension = media_extension_from_mime($info['mime']);
+    $timestamp = new DateTimeImmutable('now');
+    $subDirectory = $timestamp->format('Y') . '/' . $timestamp->format('m');
+    $targetDirectory = rtrim(UPLOAD_PATH, '/') . '/' . $subDirectory;
+    ensure_directory($targetDirectory);
+
+    $baseName = media_safe_filename(pathinfo($file['name'] ?? 'upload', PATHINFO_FILENAME));
+    $fileName = $baseName . '-' . bin2hex(random_bytes(4)) . '.' . $extension;
+    $destination = $targetDirectory . '/' . $fileName;
+
     if (!move_uploaded_file($file['tmp_name'], $destination)) {
         return null;
     }
 
-    return 'uploads/' . $filename;
+    return 'uploads/' . $subDirectory . '/' . $fileName;
+}
+
+function media_mime_is_allowed(string $mime): bool
+{
+    return in_array(strtolower($mime), MEDIA_ALLOWED_MIME_TYPES, true);
+}
+
+function media_extension_from_mime(string $mime): string
+{
+    return match (strtolower($mime)) {
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        default => 'bin',
+    };
+}
+
+function media_safe_filename(string $name): string
+{
+    $normalized = trim($name);
+    if (function_exists('iconv')) {
+        $transliterated = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $normalized);
+        if ($transliterated !== false) {
+            $normalized = $transliterated;
+        }
+    }
+    $normalized = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $normalized));
+    $normalized = trim($normalized, '-');
+    return $normalized !== '' ? $normalized : 'media';
+}
+
+function media_prepare_storage(string $originalName, string $extension): array
+{
+    $timestamp = new DateTimeImmutable('now');
+    $subDirectory = $timestamp->format('Y') . '/' . $timestamp->format('m');
+    $targetDirectory = rtrim(UPLOAD_PATH, '/') . '/' . $subDirectory;
+    ensure_directory($targetDirectory);
+
+    $base = media_safe_filename(pathinfo($originalName, PATHINFO_FILENAME));
+    $token = bin2hex(random_bytes(6));
+    $basename = $base . '-' . $token;
+
+    $build = static function (string $suffix, string $ext) use ($targetDirectory, $subDirectory, $basename): array {
+        $filename = $suffix !== '' ? $basename . $suffix . '.' . $ext : $basename . '.' . $ext;
+        return [
+            'filename' => $filename,
+            'absolute' => $targetDirectory . '/' . $filename,
+            'relative' => 'uploads/' . $subDirectory . '/' . $filename,
+        ];
+    };
+
+    return [
+        'directory' => $targetDirectory,
+        'subdir' => $subDirectory,
+        'basename' => $basename,
+        'original' => $build('', $extension),
+        'thumb' => $build('-thumb', $extension),
+        'medium' => $build('-medium', $extension),
+        'webp' => $build('', 'webp'),
+    ];
+}
+
+function media_webp_enabled(): bool
+{
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+    $value = getenv('MEDIA_ENABLE_WEBP');
+    if ($value === false) {
+        $cached = true;
+        return $cached;
+    }
+    $normalized = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+    $cached = $normalized !== null ? $normalized : true;
+    return $cached;
+}
+
+function media_create_image_resource(string $path, string $mime)
+{
+    return match (strtolower($mime)) {
+        'image/jpeg' => imagecreatefromjpeg($path),
+        'image/png' => imagecreatefrompng($path),
+        'image/webp' => function_exists('imagecreatefromwebp') ? imagecreatefromwebp($path) : false,
+        default => false,
+    };
+}
+
+function media_preserve_alpha($image, string $mime): void
+{
+    if (in_array(strtolower($mime), ['image/png', 'image/webp'], true)) {
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+    }
+}
+
+function media_resize_image(string $sourcePath, string $destinationPath, string $mime, int $maxWidth): ?array
+{
+    $info = @getimagesize($sourcePath);
+    if (!$info) {
+        return null;
+    }
+    [$width, $height] = $info;
+    if ($width <= 0 || $height <= 0) {
+        return null;
+    }
+    if ($width <= $maxWidth) {
+        if (!copy($sourcePath, $destinationPath)) {
+            return null;
+        }
+        return ['width' => $width, 'height' => $height];
+    }
+
+    $scale = $maxWidth / $width;
+    $targetWidth = max(1, (int)round($width * $scale));
+    $targetHeight = max(1, (int)round($height * $scale));
+
+    $source = media_create_image_resource($sourcePath, $info['mime']);
+    if (!$source) {
+        return null;
+    }
+
+    $target = imagecreatetruecolor($targetWidth, $targetHeight);
+    media_preserve_alpha($target, $info['mime']);
+    if (!imagecopyresampled($target, $source, 0, 0, 0, 0, $targetWidth, $targetHeight, $width, $height)) {
+        imagedestroy($source);
+        imagedestroy($target);
+        return null;
+    }
+
+    $saved = false;
+    switch (strtolower($info['mime'])) {
+        case 'image/jpeg':
+            $saved = imagejpeg($target, $destinationPath, 85);
+            break;
+        case 'image/png':
+            $saved = imagepng($target, $destinationPath, 6);
+            break;
+        case 'image/webp':
+            if (function_exists('imagewebp')) {
+                $saved = imagewebp($target, $destinationPath, 80);
+            }
+            break;
+    }
+
+    imagedestroy($source);
+    imagedestroy($target);
+
+    if (!$saved) {
+        return null;
+    }
+
+    return ['width' => $targetWidth, 'height' => $targetHeight];
+}
+
+function media_convert_to_webp(string $sourcePath, string $destinationPath, string $sourceMime): bool
+{
+    if (!media_webp_enabled() || !function_exists('imagewebp')) {
+        return false;
+    }
+    $source = media_create_image_resource($sourcePath, $sourceMime);
+    if (!$source) {
+        return false;
+    }
+    $result = imagewebp($source, $destinationPath, 80);
+    imagedestroy($source);
+    return (bool)$result;
+}
+
+function enforce_rate_limit(string $key, int $limit, int $intervalSeconds): void
+{
+    $now = time();
+    if (!isset($_SESSION['rate_limits']) || !is_array($_SESSION['rate_limits'])) {
+        $_SESSION['rate_limits'] = [];
+    }
+    if (!isset($_SESSION['rate_limits'][$key]) || !is_array($_SESSION['rate_limits'][$key])) {
+        $_SESSION['rate_limits'][$key] = [];
+    }
+    $_SESSION['rate_limits'][$key] = array_values(array_filter($_SESSION['rate_limits'][$key], static function ($timestamp) use ($now, $intervalSeconds) {
+        return is_int($timestamp) && $timestamp >= ($now - $intervalSeconds);
+    }));
+
+    if (count($_SESSION['rate_limits'][$key]) >= $limit) {
+        throw new RuntimeException('Rate limit exceeded');
+    }
+
+    $_SESSION['rate_limits'][$key][] = $now;
 }
 
 function normalize_nullable_id($value): ?int
