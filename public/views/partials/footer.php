@@ -10,7 +10,7 @@
                 <div class="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.3em] text-slate-500">
                     <span>© <?= date('Y') ?> <?= htmlspecialchars($settings['site_title'] ?? APP_NAME) ?></span>
                     <span aria-hidden="true">•</span>
-                    <span>Version <?= htmlspecialchars($settings['cms_version'] ?? '5.5') ?></span>
+                    <span>Version <?= htmlspecialchars($settings['cms_version'] ?? '5.6') ?></span>
                 </div>
             </div>
         </footer>
@@ -27,7 +27,7 @@
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(56,189,248,0.18),transparent_65%)]"></div>
         <div class="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-12 text-sm text-white/70 sm:flex-row sm:items-center sm:justify-between">
             <div class="max-w-2xl space-y-3">
-                <p class="text-xs font-semibold uppercase tracking-[0.38em] text-aurora/70">Version <?= htmlspecialchars($settings['cms_version'] ?? '5.5') ?> • Preline Interface</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.38em] text-aurora/70">Version <?= htmlspecialchars($settings['cms_version'] ?? '5.6') ?> • Preline Interface</p>
                 <div class="prose prose-invert max-w-none text-white/80">
                     <?= nl2br(htmlspecialchars($settings['footer_text'] ?? '')) ?>
                 </div>

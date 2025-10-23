@@ -93,7 +93,7 @@
                     </button>
                 </div>
                 <div class="flex items-center gap-3 sm:justify-end">
-                    <span class="hidden text-xs font-semibold uppercase tracking-[0.4em] text-brand-200 sm:inline-flex">Version <?= htmlspecialchars($settings['cms_version'] ?? '5.5') ?></span>
+                    <span class="hidden text-xs font-semibold uppercase tracking-[0.4em] text-brand-200 sm:inline-flex">Version <?= htmlspecialchars($settings['cms_version'] ?? '5.6') ?></span>
                     <?php if ($currentUser): ?>
                         <div class="flex items-center gap-3">
                             <span class="hidden text-sm text-slate-300 sm:block">Willkommen, <?= htmlspecialchars($currentUser['name'] ?? $currentUser['email'] ?? 'Admin') ?></span>
@@ -240,13 +240,13 @@
                             <span class="text-sm uppercase tracking-[0.35em] text-aurora/70"><?= htmlspecialchars($settings['site_tagline'] ?? '') ?></span>
                         </span>
                     </a>
-                    <button type="button" class="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white transition hover:border-aurora/60 hover:text-aurora focus:outline-none focus:ring-2 focus:ring-aurora lg:hidden" data-hs-collapse="#primary-navigation" aria-controls="primary-navigation" aria-label="Navigation umschalten">
+                    <button id="primary-navigation-trigger" type="button" class="hs-collapse-toggle inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white transition hover:border-aurora/60 hover:text-aurora focus:outline-none focus:ring-2 focus:ring-aurora lg:hidden" data-hs-collapse='{"target":"#primary-navigation"}' aria-controls="primary-navigation" aria-expanded="false" aria-label="Navigation umschalten">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
                 </div>
-                <div id="primary-navigation" class="hs-collapse hidden w-full flex-col gap-6 overflow-hidden transition-all duration-300 lg:flex lg:w-auto lg:flex-row lg:items-center lg:justify-between">
+                <div id="primary-navigation" class="hs-collapse hidden w-full flex-col gap-6 overflow-hidden transition-all duration-300 lg:flex lg:w-auto lg:flex-row lg:items-center lg:justify-between" aria-labelledby="primary-navigation-trigger">
                     <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-3">
                         <span class="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.38em] text-aurora/80">Navigation</span>
                         <?php if (!empty($primaryMenu)): ?>
