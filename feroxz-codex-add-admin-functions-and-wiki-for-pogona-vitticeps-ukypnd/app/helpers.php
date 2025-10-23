@@ -5,6 +5,11 @@ function view(string $template, array $data = []): void
         $data['currentRoute'] = $GLOBALS['currentRoute'];
     }
 
+    if (!isset($data['updateBanner']) && isset($_SESSION['update_banner'])) {
+        $data['updateBanner'] = $_SESSION['update_banner'];
+        unset($_SESSION['update_banner']);
+    }
+
     global $pdo;
     if (isset($pdo)) {
         if (!isset($data['navPages']) && function_exists('get_navigation_pages')) {

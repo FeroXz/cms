@@ -12,6 +12,48 @@
         </div>
     </div>
 </footer>
+<?php if (!empty($updateBanner) && current_user() && is_authorized('can_manage_settings')): ?>
+    <div class="update-banner" data-update-banner>
+        <div class="update-banner__content">
+            <span class="update-banner__title">Aktualisiert auf v<?= htmlspecialchars($updateBanner['version'] ?? '') ?></span>
+            <span class="update-banner__meta"><?= htmlspecialchars($updateBanner['created_at'] ?? '') ?></span>
+        </div>
+        <div class="update-banner__actions">
+            <button type="button" class="btn-link" data-update-modal-open>Was ist neu?</button>
+            <button type="button" class="btn-link" data-update-dismiss aria-label="Banner schließen">Schließen</button>
+        </div>
+    </div>
+    <div class="update-modal hidden" data-update-modal role="dialog" aria-modal="true" aria-labelledby="update-modal-title">
+        <div class="update-modal__backdrop" data-update-modal-overlay></div>
+        <div class="update-modal__panel">
+            <div class="update-modal__header">
+                <h2 id="update-modal-title">Was ist neu?</h2>
+                <button type="button" class="btn-link" data-update-modal-close aria-label="Modal schließen">×</button>
+            </div>
+            <div class="update-modal__body">
+                <p class="update-modal__version">Version <?= htmlspecialchars($updateBanner['version'] ?? '') ?> · <?= htmlspecialchars($updateBanner['created_at'] ?? '') ?></p>
+                <?php if (!empty($updateBanner['notes'])): ?>
+                    <p class="update-modal__notes"><?= nl2br(htmlspecialchars($updateBanner['notes'])) ?></p>
+                <?php endif; ?>
+                <?php if (!empty($updateBanner['logs'])): ?>
+                    <ul class="update-modal__log">
+                        <?php foreach (($updateBanner['logs'] ?? []) as $log): ?>
+                            <li>
+                                <div class="update-modal__log-command">
+                                    <code><?= htmlspecialchars($log['command'] ?? '') ?></code>
+                                    <span>Exit <?= isset($log['exitCode']) ? (int)$log['exitCode'] : '—' ?><?= !empty($log['simulated']) ? ' · simuliert' : '' ?></span>
+                                </div>
+                                <?php if (!empty($log['output'])): ?>
+                                    <pre><?= htmlspecialchars($log['output']) ?></pre>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
 <div class="command-palette hidden" data-command-palette>
     <div class="command-backdrop" data-command-close></div>
     <div class="command-panel" role="dialog" aria-modal="true" aria-labelledby="command-title">
@@ -144,6 +186,58 @@
                 closeAll();
             }
         });
+
+        const updateBannerEl = document.querySelector('[data-update-banner]');
+        if (updateBannerEl) {
+            const modal = document.querySelector('[data-update-modal]');
+            const openBtn = updateBannerEl.querySelector('[data-update-modal-open]');
+            const dismissBtn = updateBannerEl.querySelector('[data-update-dismiss]');
+            const closeBtn = modal ? modal.querySelector('[data-update-modal-close]') : null;
+            const overlay = modal ? modal.querySelector('[data-update-modal-overlay]') : null;
+
+            const toggleBodyScroll = (state) => {
+                document.body.classList.toggle('overflow-hidden', state);
+            };
+
+            const closeModal = () => {
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+                toggleBodyScroll(false);
+            };
+
+            const openModal = () => {
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    const focusTarget = modal.querySelector('button, [href], input, select, textarea, [tabindex]');
+                    if (focusTarget) {
+                        focusTarget.focus();
+                    }
+                }
+                toggleBodyScroll(true);
+            };
+
+            if (openBtn && modal) {
+                openBtn.addEventListener('click', openModal);
+            }
+            if (dismissBtn) {
+                dismissBtn.addEventListener('click', () => {
+                    updateBannerEl.remove();
+                });
+            }
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeModal);
+            }
+            if (overlay) {
+                overlay.addEventListener('click', closeModal);
+            }
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeModal();
+                }
+            });
+        }
 
         const palette = document.querySelector('[data-command-palette]');
         if (palette) {

@@ -309,4 +309,22 @@ function initialize_database(PDO $pdo): void
             $pdo->exec($sql);
         }
     }
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS changelog_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        version TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT "success",
+        notes TEXT,
+        logs TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )');
+
+    $changelogColumns = $pdo->query('PRAGMA table_info(changelog_entries)')->fetchAll();
+    $changelogColumnNames = array_column($changelogColumns, 'name');
+    if (!in_array('status', $changelogColumnNames, true)) {
+        $pdo->exec('ALTER TABLE changelog_entries ADD COLUMN status TEXT NOT NULL DEFAULT "success"');
+    }
+    if (!in_array('logs', $changelogColumnNames, true)) {
+        $pdo->exec('ALTER TABLE changelog_entries ADD COLUMN logs TEXT');
+    }
 }

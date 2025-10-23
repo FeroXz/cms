@@ -626,7 +626,46 @@ switch ($route) {
         }
         $settings = get_all_settings($pdo);
         $flashSuccess = flash('success');
-        view('admin/settings', compact('settings', 'flashSuccess'));
+        $flashError = flash('error');
+        $updateSummaryRaw = flash('update_summary');
+        $updateSummary = $updateSummaryRaw ? json_decode($updateSummaryRaw, true) : null;
+        $changelogEntries = get_recent_changelog_entries($pdo, 10);
+        $updateCapabilities = [
+            'enabled' => updates_are_enabled(),
+            'environment' => app_environment(),
+        ];
+        view('admin/settings', compact('settings', 'flashSuccess', 'flashError', 'updateSummary', 'changelogEntries', 'updateCapabilities'));
+        break;
+
+    case 'admin/settings/update':
+        require_login();
+        if (!is_authorized('can_manage_settings')) {
+            flash('error', 'Keine Berechtigung.');
+            redirect('admin/dashboard');
+        }
+
+        require_csrf_token('admin/settings');
+        $version = $_POST['version'] ?? '';
+        $notes = $_POST['notes'] ?? '';
+        $result = perform_system_update($pdo, (string)$version, (string)$notes);
+
+        if ($result['status'] === 'disabled') {
+            flash('error', $result['message'] ?? 'Update-Funktion ist deaktiviert.');
+        } else {
+            $message = $result['message'] ?? 'Update durchgeführt.';
+            if ($result['status'] === 'failed') {
+                flash('error', $message);
+            } else {
+                flash('success', $message);
+            }
+            flash('update_summary', json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
+            if (!empty($result['changelog']) && in_array($result['status'], ['success', 'simulated'], true)) {
+                $_SESSION['update_banner'] = $result['changelog'];
+            }
+        }
+
+        redirect('admin/settings');
         break;
 
     case 'admin/content':

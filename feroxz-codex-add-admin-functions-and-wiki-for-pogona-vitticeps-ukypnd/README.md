@@ -1,6 +1,6 @@
 # FeroxZ – PHP Reptile CMS
 
-**Aktuelle Version:** 3.4.0
+**Aktuelle Version:** 3.5.0
 
 FeroxZ ist ein leichtgewichtiges, auf PHP 8.3 und SQLite basierendes CMS für Reptilienhalter. Es vereint Tierverwaltung, Tierabgabe, private Tierakten sowie ein Admin-Backend mit granularen Berechtigungen. Alle Inhalte werden persistiert in einer lokalen SQLite-Datenbank gespeichert, Medien landen im Verzeichnis `uploads/`.
 
@@ -96,6 +96,7 @@ npm test
 - [x] Wiki- & News-Bereiche mit Detailansicht und Inline-Medien
 - [x] Command-Palette (Cmd/Ctrl+K) für Tiere, Morphs, News & Wiki
 - [x] Admin-Dashboard mit KPI-Kacheln und Liste letzter Uploads
+- [x] Update-&-Deploy-Button mit Changelog-Banner und Modal-Details
 
 ## Standard-Login
 
@@ -123,6 +124,6 @@ Bitte ändere das Passwort nach der ersten Anmeldung über die Benutzerverwaltun
 ## Update-Funktion
 
 - Die Update-Funktion kann serverseitig `git pull --rebase`, optionale Migrationen und einen Build-Lauf triggern.
-- Aktiviere sie per `APP_ENABLE_UPDATE=true` in der `.env`.
-- In lokalen Entwicklungsumgebungen führt der Button einen Dry-Run aus und meldet das Ergebnis als Toast im Admin-Dashboard.
-- Nach erfolgreichem Lauf erscheint ein Banner mit der neuesten Version und Verweis auf den Changelog.
+- Aktiviere sie per `ENABLE_UPDATE=true` (oder rückwärtskompatibel `APP_ENABLE_UPDATE=true`) in der `.env`.
+- In lokalen Entwicklungsumgebungen führt der Button einen Simulationslauf aus, der Protokolle ohne echte Befehlsausführung speichert.
+- Nach erfolgreichem Lauf erscheint ein Banner mit der neuesten Version inklusive „Was ist neu?“-Modal und Changelog-Eintrag.
