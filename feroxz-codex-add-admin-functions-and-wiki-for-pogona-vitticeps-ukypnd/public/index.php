@@ -145,24 +145,244 @@ switch ($route) {
 
     case 'genetics':
         $settings = get_all_settings($pdo);
-        $speciesList = get_genetic_species($pdo);
-        $selectedSlug = $_POST['species_slug'] ?? $_GET['species'] ?? ($speciesList[0]['slug'] ?? null);
-        $selectedSpecies = $selectedSlug ? get_genetic_species_by_slug($pdo, $selectedSlug) : null;
-        if (!$selectedSpecies && !empty($speciesList)) {
-            $selectedSpecies = get_genetic_species_by_id($pdo, (int)$speciesList[0]['id']);
+        $speciesList = get_supported_genetic_species($pdo);
+        if (empty($speciesList)) {
+            $speciesList = get_genetic_species($pdo);
+        }
+        $speciesIndex = [];
+        foreach ($speciesList as $entry) {
+            $speciesIndex[$entry['slug']] = $entry;
+        }
+
+        $selectedSlug = $_POST['species_slug'] ?? $_GET['species'] ?? (array_key_first($speciesIndex) ?? null);
+        if ($selectedSlug && !isset($speciesIndex[$selectedSlug]) && !empty($speciesList)) {
             $selectedSlug = $speciesList[0]['slug'];
         }
+        $selectedSpecies = ($selectedSlug && isset($speciesIndex[$selectedSlug])) ? $speciesIndex[$selectedSlug] : null;
+        if (!$selectedSpecies && !empty($speciesList)) {
+            $selectedSpecies = $speciesList[0];
+            $selectedSlug = $selectedSpecies['slug'];
+        }
+
         $genes = $selectedSpecies ? get_genetic_genes($pdo, (int)$selectedSpecies['id']) : [];
         $activeGenes = array_values(array_filter($genes, static fn($gene) => empty($gene['is_reference'])));
         $referenceGenes = array_values(array_filter($genes, static fn($gene) => !empty($gene['is_reference'])));
-        $parentSelections = [
-            'parent1' => $_POST['parent1'] ?? [],
-            'parent2' => $_POST['parent2'] ?? [],
-        ];
+
+        $geneSlugToId = [];
+        foreach ($activeGenes as $gene) {
+            if (!empty($gene['slug'])) {
+                $geneSlugToId[$gene['slug']] = (int)$gene['id'];
+            }
+        }
+        $genesBySlug = build_gene_lookup_by_slug($activeGenes);
+
+        $parentKeys = ['parent1', 'parent2'];
+        $parentSelections = [];
+        $parentSources = [];
+        $parentAnimalSelections = [];
+        $parentMorphSelections = [];
+        $sourcePayload = is_array($_POST['parent_sources'] ?? null) ? $_POST['parent_sources'] : [];
+        $animalPayload = is_array($_POST['parent_animals'] ?? null) ? $_POST['parent_animals'] : [];
+        $morphPayload = is_array($_POST['parent_morphs'] ?? null) ? $_POST['parent_morphs'] : [];
+
+        foreach ($parentKeys as $parentKey) {
+            $rawSelections = $_POST[$parentKey] ?? [];
+            $parentSelections[$parentKey] = is_array($rawSelections) ? $rawSelections : [];
+
+            $source = $sourcePayload[$parentKey] ?? 'manual';
+            $parentSources[$parentKey] = in_array($source, ['manual', 'animal'], true) ? $source : 'manual';
+
+            $parentAnimalSelections[$parentKey] = normalize_nullable_id($animalPayload[$parentKey] ?? null);
+
+            $morphIds = [];
+            $rawMorphs = $morphPayload[$parentKey] ?? [];
+            if (is_array($rawMorphs)) {
+                foreach ($rawMorphs as $morphId) {
+                    $id = (int)$morphId;
+                    if ($id > 0) {
+                        $morphIds[] = $id;
+                    }
+                }
+            }
+            $parentMorphSelections[$parentKey] = $morphIds;
+        }
+
+        $allowedGeneIds = [];
+        foreach ($activeGenes as $gene) {
+            $allowedGeneIds[(int)$gene['id']] = true;
+        }
+        foreach ($parentKeys as $parentKey) {
+            $filtered = [];
+            foreach ($parentSelections[$parentKey] as $geneId => $state) {
+                $geneId = (int)$geneId;
+                if (!isset($allowedGeneIds[$geneId])) {
+                    continue;
+                }
+                $filtered[$geneId] = sanitize_gene_state((string)$state);
+            }
+            $parentSelections[$parentKey] = $filtered;
+        }
+
+        $speciesAnimals = $selectedSlug ? get_animals_with_genetics($pdo, $selectedSlug) : [];
+        $animalsById = [];
+        foreach ($speciesAnimals as $animal) {
+            $animalsById[$animal['id']] = $animal;
+        }
+
+        $selectedParentAnimals = [];
+        foreach ($parentKeys as $parentKey) {
+            $animalId = $parentAnimalSelections[$parentKey];
+            $selectedParentAnimals[$parentKey] = ($animalId !== null && isset($animalsById[$animalId])) ? $animalsById[$animalId] : null;
+
+            if ($parentSources[$parentKey] === 'animal' && !$selectedParentAnimals[$parentKey]) {
+                $parentSources[$parentKey] = 'manual';
+            }
+
+            if ($parentSources[$parentKey] === 'animal' && $selectedParentAnimals[$parentKey]) {
+                $profileSelections = [];
+                foreach ($selectedParentAnimals[$parentKey]['genetics_profile'] as $slug => $state) {
+                    if (isset($geneSlugToId[$slug])) {
+                        $profileSelections[$geneSlugToId[$slug]] = sanitize_gene_state($state);
+                    }
+                }
+                if ($profileSelections) {
+                    $parentSelections[$parentKey] = $profileSelections;
+                }
+            }
+        }
+
+        $speciesMorphs = $selectedSlug ? get_genetic_morphs_for_species($pdo, $selectedSlug) : [];
+        $allMorphIds = [];
+        foreach ($parentMorphSelections as $ids) {
+            foreach ($ids as $id) {
+                $allMorphIds[] = $id;
+            }
+        }
+        $morphRecords = $allMorphIds ? get_genetic_morphs_by_ids($pdo, $allMorphIds) : [];
+        $parentMorphDetails = [];
+        foreach ($parentKeys as $parentKey) {
+            $filteredIds = [];
+            $details = [];
+            foreach ($parentMorphSelections[$parentKey] as $id) {
+                if (isset($morphRecords[$id]) && (!$selectedSlug || $morphRecords[$id]['species_slug'] === $selectedSlug)) {
+                    $filteredIds[] = $id;
+                    $details[] = $morphRecords[$id];
+                }
+            }
+            $parentMorphSelections[$parentKey] = $filteredIds;
+            $parentMorphDetails[$parentKey] = $details;
+        }
+
         $results = null;
+        $resultsExport = null;
+        $resultText = null;
+        $polygenicNotices = [];
+        $parentSlugSelections = [];
+        foreach ($parentKeys as $parentKey) {
+            $parentSlugSelections[$parentKey] = map_gene_selections_to_slugs($activeGenes, $parentSelections[$parentKey]);
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedSpecies && !empty($activeGenes)) {
             $results = calculate_genetic_outcomes($activeGenes, $parentSelections['parent1'], $parentSelections['parent2']);
+            if ($results) {
+                $polygenicNotices = $results['polygenic'] ?? [];
+                $geneSlugIndex = build_gene_slug_index($activeGenes);
+
+                $combinedExport = [];
+                foreach ($results['combined'] as $entry) {
+                    $stateMap = [];
+                    foreach ($entry['states'] as $geneId => $state) {
+                        $slug = $geneSlugIndex[(int)$geneId] ?? (string)$geneId;
+                        $stateMap[$slug] = $state;
+                    }
+                    $labelMap = [];
+                    foreach ($entry['labels'] as $geneId => $label) {
+                        $slug = $geneSlugIndex[(int)$geneId] ?? (string)$geneId;
+                        $labelMap[$slug] = $label;
+                    }
+                    $combinedExport[] = [
+                        'probability' => $entry['probability'],
+                        'phenotype' => $entry['phenotype'],
+                        'states' => $stateMap,
+                        'labels' => $labelMap,
+                    ];
+                }
+
+                $parentsExport = [];
+                foreach ($parentKeys as $parentKey) {
+                    $animal = $selectedParentAnimals[$parentKey];
+                    $parentsExport[] = [
+                        'key' => $parentKey,
+                        'source' => $parentSources[$parentKey],
+                        'animal' => $animal ? [
+                            'id' => $animal['id'],
+                            'name' => $animal['name'],
+                            'genetics' => $animal['genetics'],
+                        ] : null,
+                        'geneStates' => $parentSlugSelections[$parentKey],
+                        'morphs' => array_values(array_map(static function ($record) {
+                            return [
+                                'id' => $record['id'],
+                                'name' => $record['name'],
+                                'type' => $record['type'],
+                                'aliases' => $record['aliases'],
+                            ];
+                        }, $parentMorphDetails[$parentKey])),
+                    ];
+                }
+
+                $resultsExport = [
+                    'species' => [
+                        'slug' => $selectedSlug,
+                        'name' => $selectedSpecies['name'] ?? '',
+                        'scientific_name' => $selectedSpecies['scientific_name'] ?? null,
+                    ],
+                    'generatedAt' => date(DATE_ATOM),
+                    'parents' => $parentsExport,
+                    'results' => [
+                        'combined' => $combinedExport,
+                        'genes' => export_gene_results($results['genes']),
+                        'polygenic' => export_gene_results($polygenicNotices),
+                    ],
+                ];
+
+                $parentSummaries = [];
+                foreach ($parentKeys as $parentKey) {
+                    $parentSummaries[$parentKey] = summarize_gene_selection($genesBySlug, $parentSlugSelections[$parentKey]);
+                }
+
+                $lines = [];
+                $lines[] = 'Art: ' . ($selectedSpecies['name'] ?? $selectedSlug ?? 'unbekannt');
+                foreach ($parentKeys as $parentKey) {
+                    $label = $parentKey === 'parent1' ? 'Elter 1' : 'Elter 2';
+                    $sourceLabel = $parentSources[$parentKey] === 'animal' ? 'Tier aus Bestand' : 'manuell';
+                    $animal = $selectedParentAnimals[$parentKey];
+                    $parentLine = $label . ' (' . $sourceLabel . ')';
+                    if ($animal) {
+                        $parentLine .= ': ' . $animal['name'];
+                    }
+                    $lines[] = $parentLine;
+                    if (!empty($parentSummaries[$parentKey])) {
+                        $lines[] = '  Gene: ' . implode(', ', $parentSummaries[$parentKey]);
+                    }
+                    if (!empty($parentMorphDetails[$parentKey])) {
+                        $lines[] = '  Morphs: ' . implode(', ', array_map(static fn($m) => $m['name'], $parentMorphDetails[$parentKey]));
+                    }
+                }
+                $lines[] = 'Punnett-Auswertung:';
+                foreach ($combinedExport as $entry) {
+                    $lines[] = sprintf('  %.1f%% – %s', $entry['probability'] * 100, $entry['phenotype']);
+                }
+                if (!empty($polygenicNotices)) {
+                    $lines[] = 'Polygen-Hinweise:';
+                    foreach ($polygenicNotices as $note) {
+                        $lines[] = '  ' . ($note['gene']['name'] ?? 'Polygenes Merkmal');
+                    }
+                }
+                $resultText = implode("\n", $lines);
+            }
         }
+
         view('genetics/index', [
             'settings' => $settings,
             'speciesList' => $speciesList,
@@ -171,7 +391,18 @@ switch ($route) {
             'genes' => $activeGenes,
             'referenceGenes' => $referenceGenes,
             'parentSelections' => $parentSelections,
+            'parentSources' => $parentSources,
+            'parentAnimals' => $selectedParentAnimals,
+            'parentAnimalSelections' => $parentAnimalSelections,
+            'parentMorphSelections' => $parentMorphSelections,
+            'parentMorphDetails' => $parentMorphDetails,
+            'parentSlugSelections' => $parentSlugSelections,
+            'speciesAnimals' => $speciesAnimals,
+            'speciesMorphs' => $speciesMorphs,
             'results' => $results,
+            'resultsExport' => $resultsExport,
+            'resultText' => $resultText,
+            'polygenicNotices' => $polygenicNotices,
         ]);
         break;
 

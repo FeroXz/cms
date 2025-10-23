@@ -1,7 +1,50 @@
 <?php
 
-const GENETIC_INHERITANCE_MODES = ['recessive', 'dominant', 'incomplete_dominant'];
+const GENETIC_INHERITANCE_MODES = ['recessive', 'dominant', 'incomplete_dominant', 'codominant'];
 const GENETIC_MORPH_TYPES = ['recessive', 'dominant', 'codominant', 'polygenic'];
+const GENETICS_SUPPORTED_SPECIES = [
+    'pogona-vitticeps' => [
+        'name' => 'Pogona vitticeps',
+        'scientific_name' => 'Pogona vitticeps',
+    ],
+    'heterodon-nasicus' => [
+        'name' => 'Heterodon nasicus',
+        'scientific_name' => 'Heterodon nasicus',
+    ],
+    'pantherophis-guttatus' => [
+        'name' => 'Pantherophis guttatus',
+        'scientific_name' => 'Pantherophis guttatus',
+    ],
+    'python-regius' => [
+        'name' => 'Python regius',
+        'scientific_name' => 'Python regius',
+    ],
+];
+
+function get_supported_genetic_species(PDO $pdo): array
+{
+    $records = get_genetic_species($pdo);
+    if (!$records) {
+        return [];
+    }
+
+    $supported = [];
+    foreach ($records as $record) {
+        if (isset(GENETICS_SUPPORTED_SPECIES[$record['slug']])) {
+            $supported[] = $record;
+        }
+    }
+
+    if (!$supported) {
+        return $records;
+    }
+
+    usort($supported, static function ($a, $b) {
+        return strcasecmp($a['name'], $b['name']);
+    });
+
+    return $supported;
+}
 
 function get_genetic_species(PDO $pdo): array
 {
@@ -100,9 +143,16 @@ function get_genetic_gene(PDO $pdo, int $id): ?array
 function normalize_inheritance_mode(string $mode): string
 {
     $mode = strtolower(trim($mode));
+    $mode = str_replace([' ', '-'], '_', $mode);
+
+    if ($mode === 'co_dominant' || $mode === 'codominant') {
+        $mode = 'incomplete_dominant';
+    }
+
     if (!in_array($mode, GENETIC_INHERITANCE_MODES, true)) {
         return 'recessive';
     }
+
     return $mode;
 }
 
@@ -272,7 +322,7 @@ function gene_state_is_visual(array $gene, string $state): bool
 {
     return match ($gene['inheritance_mode']) {
         'recessive' => $state === 'homozygous',
-        'dominant', 'incomplete_dominant' => in_array($state, ['heterozygous', 'homozygous'], true),
+        'dominant', 'incomplete_dominant', 'codominant' => in_array($state, ['heterozygous', 'homozygous'], true),
         default => false,
     };
 }
@@ -327,11 +377,41 @@ function calculate_gene_distribution(array $gene, string $parentOneState, string
 function calculate_genetic_outcomes(array $genes, array $parentOneSelections, array $parentTwoSelections): ?array
 {
     $geneResults = [];
+    $polygenicResults = [];
 
     foreach ($genes as $gene) {
         $geneId = (int)$gene['id'];
         $stateOne = sanitize_gene_state($parentOneSelections[$geneId] ?? null);
         $stateTwo = sanitize_gene_state($parentTwoSelections[$geneId] ?? null);
+        $inheritanceMode = $gene['inheritance_mode'] ?? '';
+
+        if ($inheritanceMode === 'polygenic') {
+            if ($stateOne === 'normal' && $stateTwo === 'normal') {
+                continue;
+            }
+
+            $note = [
+                'state' => 'polygenic',
+                'probability' => null,
+                'label' => 'Polygenes Merkmal – keine Punnett-Berechnung verfügbar',
+                'is_visual' => false,
+                'is_carrier' => false,
+                'is_polygenic' => true,
+            ];
+
+            $entry = [
+                'gene' => $gene,
+                'states' => [$note],
+                'parent_states' => [
+                    'parent_one' => $stateOne,
+                    'parent_two' => $stateTwo,
+                ],
+            ];
+
+            $geneResults[$geneId] = $entry;
+            $polygenicResults[$geneId] = $entry;
+            continue;
+        }
 
         if ($stateOne === 'normal' && $stateTwo === 'normal') {
             continue;
@@ -363,6 +443,9 @@ function calculate_genetic_outcomes(array $genes, array $parentOneSelections, ar
     ];
 
     foreach ($geneResults as $geneId => $geneResult) {
+        if (isset($polygenicResults[$geneId])) {
+            continue;
+        }
         $geneStates = $geneResult['states'];
         $nextCombined = [];
         foreach ($combined as $entry) {
@@ -429,11 +512,132 @@ function calculate_genetic_outcomes(array $genes, array $parentOneSelections, ar
     return [
         'genes' => $geneResults,
         'combined' => $combinedResults,
+        'polygenic' => array_values($polygenicResults),
     ];
+}
+
+function build_gene_slug_index(array $genes): array
+{
+    $index = [];
+    foreach ($genes as $gene) {
+        $index[(int)$gene['id']] = $gene['slug'] ?? (string)$gene['id'];
+    }
+
+    return $index;
+}
+
+function map_gene_selections_to_slugs(array $genes, array $selections): array
+{
+    $slugIndex = build_gene_slug_index($genes);
+    $mapped = [];
+    foreach ($selections as $key => $state) {
+        $id = (int)$key;
+        if (!isset($slugIndex[$id])) {
+            continue;
+        }
+        $mapped[$slugIndex[$id]] = sanitize_gene_state($state);
+    }
+
+    return $mapped;
+}
+
+function build_gene_lookup_by_slug(array $genes): array
+{
+    $lookup = [];
+    foreach ($genes as $gene) {
+        if (!empty($gene['slug'])) {
+            $lookup[$gene['slug']] = $gene;
+        }
+    }
+
+    return $lookup;
+}
+
+function summarize_gene_selection(array $genesBySlug, array $slugSelections): array
+{
+    $summaries = [];
+    foreach ($slugSelections as $slug => $state) {
+        $gene = $genesBySlug[$slug] ?? null;
+        if (!$gene) {
+            continue;
+        }
+        $label = gene_state_label($gene, $state);
+        if ($label) {
+            $summaries[] = $label;
+        }
+    }
+
+    return $summaries;
+}
+
+function export_gene_results(array $geneResults): array
+{
+    $export = [];
+    foreach ($geneResults as $geneId => $result) {
+        $gene = $result['gene'];
+        $states = [];
+        foreach ($result['states'] as $state) {
+            $states[] = [
+                'state' => $state['state'],
+                'probability' => $state['probability'],
+                'label' => $state['label'],
+                'is_visual' => $state['is_visual'],
+                'is_carrier' => $state['is_carrier'],
+                'is_polygenic' => $state['is_polygenic'] ?? false,
+            ];
+        }
+
+        $export[] = [
+            'gene' => [
+                'id' => (int)$gene['id'],
+                'slug' => $gene['slug'] ?? (string)$geneId,
+                'name' => $gene['name'] ?? '',
+                'inheritance_mode' => $gene['inheritance_mode'] ?? 'recessive',
+            ],
+            'states' => $states,
+            'parents' => $result['parent_states'] ?? [],
+        ];
+    }
+
+    return $export;
+}
+
+function ensure_supported_genetic_species(PDO $pdo): void
+{
+    foreach (GENETICS_SUPPORTED_SPECIES as $slug => $meta) {
+        $existing = get_genetic_species_by_slug($pdo, $slug);
+        $description = $meta['description'] ?? null;
+
+        if ($existing) {
+            $updates = [];
+            if (trim((string)$existing['name']) === '' && !empty($meta['name'])) {
+                $updates['name'] = $meta['name'];
+            }
+            if (empty($existing['scientific_name']) && !empty($meta['scientific_name'])) {
+                $updates['scientific_name'] = $meta['scientific_name'];
+            }
+            if (!empty($description) && trim((string)$existing['description']) === '') {
+                $updates['description'] = $description;
+            }
+
+            if ($updates) {
+                update_genetic_species($pdo, (int)$existing['id'], array_merge($existing, $updates));
+            }
+            continue;
+        }
+
+        create_genetic_species($pdo, [
+            'name' => $meta['name'],
+            'slug' => $slug,
+            'scientific_name' => $meta['scientific_name'] ?? null,
+            'description' => $description,
+        ]);
+    }
 }
 
 function ensure_default_genetics(PDO $pdo): void
 {
+    ensure_supported_genetic_species($pdo);
     $existing = get_genetic_species_by_slug($pdo, 'heterodon-nasicus');
     $defaultDescription = 'Die westliche Hakennasennatter (<em>Heterodon nasicus</em>) besticht durch eine enorme Bandbreite an rezessiven und inkomplett dominanten Linien. Die hinterlegten Gene dienen als fundierte Ausgangsbasis für Punnett-Berechnungen und Zuchtplanung.';
     if ($existing) {
@@ -1452,6 +1656,50 @@ function build_existing_morph_index(PDO $pdo, string $speciesSlug): array
     }
 
     return $index;
+}
+
+function get_genetic_morphs_for_species(PDO $pdo, string $speciesSlug): array
+{
+    $stmt = $pdo->prepare('SELECT * FROM genetic_morphs WHERE species_slug = :slug ORDER BY display_name ASC');
+    $stmt->execute(['slug' => $speciesSlug]);
+    $records = $stmt->fetchAll();
+
+    return array_map('transform_genetic_morph', $records ?: []);
+}
+
+function get_genetic_morphs_by_ids(PDO $pdo, array $ids): array
+{
+    $ids = array_values(array_unique(array_map('intval', $ids)));
+    if (empty($ids)) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare("SELECT * FROM genetic_morphs WHERE id IN ($placeholders)");
+    $stmt->execute($ids);
+    $rows = $stmt->fetchAll();
+
+    $result = [];
+    foreach ($rows as $row) {
+        $result[(int)$row['id']] = transform_genetic_morph($row);
+    }
+
+    return $result;
+}
+
+function transform_genetic_morph(array $record): array
+{
+    return [
+        'id' => (int)$record['id'],
+        'species_slug' => $record['species_slug'],
+        'species_name' => $record['species_name'],
+        'name' => $record['display_name'],
+        'slug' => $record['normalized_name'],
+        'type' => $record['morph_type'],
+        'aliases' => decode_morph_aliases($record['aliases'] ?? null),
+        'description' => $record['description'] ?? null,
+        'source_url' => $record['source_url'] ?? null,
+    ];
 }
 
 function update_morph_index_entry(array &$index, array $record): void

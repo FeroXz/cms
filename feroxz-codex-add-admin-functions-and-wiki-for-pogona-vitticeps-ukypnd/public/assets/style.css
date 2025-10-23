@@ -479,6 +479,74 @@ input[type="checkbox"] {
   gap: 1rem;
 }
 
+.gene-parent__mode {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.gene-parent__mode-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.gene-parent__mode-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gene-parent__mode-option span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.gene-parent__mode-option input:checked + span {
+  border-color: var(--accent);
+  background: rgba(34, 211, 238, 0.18);
+  color: var(--accent);
+}
+
+.gene-parent__animal {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.gene-parent__animal-input {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.gene-parent__animal-input input[type="text"] {
+  flex: 1;
+}
+
+.gene-parent__animal-summary p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.gene-parent__animal-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
 .gene-parent__tags {
   display: flex;
   flex-wrap: wrap;
@@ -542,6 +610,81 @@ input[type="checkbox"] {
 .gene-parent__suggestions button:hover {
   border-color: var(--accent);
   background: rgba(34, 211, 238, 0.12);
+}
+
+.gene-parent__morphs {
+  border-top: 1px dashed rgba(148, 163, 184, 0.2);
+  padding-top: 0.75rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.gene-parent__morph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.gene-parent__morph-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.morph-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  font-size: 0.8rem;
+}
+
+.morph-tag__remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.btn-small {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+}
+
+.result-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.copy-feedback {
+  font-size: 0.8rem;
+  color: var(--accent);
+}
+
+.polygenic-notes {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.polygenic-notes ul {
+  margin: 0.5rem 0 0.75rem;
+  padding-left: 1.25rem;
+  line-height: 1.5;
+}
+
+.polygenic-notes li {
+  margin-bottom: 0.35rem;
 }
 
 .tag {

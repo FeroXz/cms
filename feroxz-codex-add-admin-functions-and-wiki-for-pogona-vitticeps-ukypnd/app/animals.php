@@ -78,3 +78,42 @@ function get_public_animals(PDO $pdo): array
 {
     return $pdo->query('SELECT * FROM animals WHERE is_private = 0 ORDER BY created_at DESC')->fetchAll();
 }
+
+function get_animals_with_genetics(PDO $pdo, ?string $speciesSlug = null): array
+{
+    $sql = 'SELECT id, name, species, species_slug, genetics, genetics_profile FROM animals WHERE is_private = 0 AND genetics_profile IS NOT NULL AND genetics_profile != ""';
+    $params = [];
+    if ($speciesSlug !== null) {
+        $sql .= ' AND species_slug = :slug';
+        $params['slug'] = $speciesSlug;
+    }
+    $sql .= ' ORDER BY name COLLATE NOCASE ASC';
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
+
+    $result = [];
+    foreach ($rows as $row) {
+        $profile = [];
+        if (!empty($row['genetics_profile'])) {
+            $decoded = json_decode($row['genetics_profile'], true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $geneSlug => $state) {
+                    $profile[(string)$geneSlug] = sanitize_gene_state((string)$state);
+                }
+            }
+        }
+
+        $result[] = [
+            'id' => (int)$row['id'],
+            'name' => $row['name'],
+            'species' => $row['species'],
+            'species_slug' => $row['species_slug'],
+            'genetics' => $row['genetics'],
+            'genetics_profile' => $profile,
+        ];
+    }
+
+    return $result;
+}

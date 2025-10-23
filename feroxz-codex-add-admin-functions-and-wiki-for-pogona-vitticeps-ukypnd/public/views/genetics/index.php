@@ -32,6 +32,16 @@
         <?php endif; ?>
     </div>
 
+    <?php
+        $parentSources = $parentSources ?? ['parent1' => 'manual', 'parent2' => 'manual'];
+        $parentAnimals = $parentAnimals ?? ['parent1' => null, 'parent2' => null];
+        $parentAnimalSelections = $parentAnimalSelections ?? ['parent1' => null, 'parent2' => null];
+        $parentMorphDetails = $parentMorphDetails ?? ['parent1' => [], 'parent2' => []];
+        $parentSlugSelections = $parentSlugSelections ?? ['parent1' => [], 'parent2' => []];
+        $speciesAnimals = $speciesAnimals ?? [];
+        $speciesMorphs = $speciesMorphs ?? [];
+    ?>
+
     <?php if ($selectedSpecies && !empty($genes)): ?>
         <?php
             $toLower = static function (string $value): string {
@@ -41,6 +51,7 @@
                 'recessive' => 'rezessiv',
                 'dominant' => 'dominant',
                 'incomplete_dominant' => 'inkomplett dominant',
+                'codominant' => 'co-dominant',
             ];
             $geneStatePayload = [];
             foreach ($genes as $gene) {
@@ -69,9 +80,11 @@
                 }
                 $geneStatePayload[] = [
                     'id' => $geneId,
+                    'slug' => $gene['slug'],
                     'name' => $gene['name'],
                     'shorthand' => $gene['shorthand'],
                     'inheritance' => $modeLabels[$gene['inheritance_mode']] ?? $gene['inheritance_mode'],
+                    'inheritance_mode' => $gene['inheritance_mode'],
                     'description' => $gene['description'],
                     'states' => $stateEntries,
                 ];
@@ -80,32 +93,89 @@
         <form method="post" class="card gene-selector" data-genetic-selector>
             <input type="hidden" name="species_slug" value="<?= htmlspecialchars($selectedSpecies['slug']) ?>">
             <div class="gene-selector__intro">
-                <p><strong>Eingabehilfe:</strong> Tippen Sie einen Gen-Namen oder Trägerstatus (z.&nbsp;B. „Albino“, „het Toffee“, „Super Anaconda“). Bestätigen Sie den Vorschlag mit Enter oder einem Klick. Nicht ausgewählte Gene werden automatisch als Wildtyp gewertet.</p>
+                <p><strong>Eingabehilfe:</strong> Wählen Sie je Elternteil entweder ein Tier aus dem Bestand oder pflegen Sie die Gene und Morphs manuell. Tippen Sie einen Gen-Namen oder Trägerstatus (z.&nbsp;B. „Albino“, „het Toffee“, „Super Anaconda“). Nicht ausgewählte Gene werden automatisch als Wildtyp gewertet.</p>
             </div>
             <div class="alert alert-error" data-form-error hidden role="alert" aria-live="assertive"></div>
             <div class="gene-selector__parents">
-                <section class="gene-parent" data-parent="parent1">
-                    <h2>Elter 1</h2>
-                    <p class="text-muted">Fügen Sie alle sichtbaren Morphe sowie Trägereigenschaften hinzu.</p>
-                    <div class="gene-parent__tags" data-tag-container></div>
-                    <div class="gene-parent__input">
-                        <input type="text" placeholder="Gen oder Bezeichnung eingeben …" data-input>
-                        <button type="button" class="btn btn-secondary" data-clear>Zurücksetzen</button>
-                    </div>
-                    <div class="gene-parent__suggestions" data-suggestions hidden></div>
-                    <div data-hidden-inputs></div>
-                </section>
-                <section class="gene-parent" data-parent="parent2">
-                    <h2>Elter 2</h2>
-                    <p class="text-muted">Bestimmen Sie visuelle Merkmale oder Heterozygotie wie „het Albino“.</p>
-                    <div class="gene-parent__tags" data-tag-container></div>
-                    <div class="gene-parent__input">
-                        <input type="text" placeholder="Gen oder Bezeichnung eingeben …" data-input>
-                        <button type="button" class="btn btn-secondary" data-clear>Zurücksetzen</button>
-                    </div>
-                    <div class="gene-parent__suggestions" data-suggestions hidden></div>
-                    <div data-hidden-inputs></div>
-                </section>
+                <?php
+                    $parentLabels = ['parent1' => 'Elter 1', 'parent2' => 'Elter 2'];
+                    $parentDescriptions = [
+                        'parent1' => 'Fügen Sie alle sichtbaren Morphe sowie Trägereigenschaften hinzu.',
+                        'parent2' => 'Bestimmen Sie visuelle Merkmale oder Heterozygotie wie „het Albino“. Sie können Angaben aus dem Bestand überschreiben.',
+                    ];
+                ?>
+                <?php foreach ($parentLabels as $parentKey => $parentLabel): ?>
+                    <?php
+                        $source = $parentSources[$parentKey] ?? 'manual';
+                        $selectedAnimal = $parentAnimals[$parentKey] ?? null;
+                        $selectedAnimalId = $parentAnimalSelections[$parentKey] ?? null;
+                        $morphDetails = $parentMorphDetails[$parentKey] ?? [];
+                    ?>
+                    <section class="gene-parent" data-parent="<?= $parentKey ?>" data-parent-source="<?= htmlspecialchars($source) ?>">
+                        <h2><?= htmlspecialchars($parentLabel) ?></h2>
+                        <p class="text-muted"><?= htmlspecialchars($parentDescriptions[$parentKey]) ?></p>
+                        <div class="gene-parent__mode" role="group" aria-label="Eingabequelle wählen">
+                            <label class="gene-parent__mode-option">
+                                <input type="radio" name="parent_sources[<?= $parentKey ?>]" value="manual" <?= $source === 'manual' ? 'checked' : '' ?>>
+                                <span>Manuell</span>
+                            </label>
+                            <label class="gene-parent__mode-option">
+                                <input type="radio" name="parent_sources[<?= $parentKey ?>]" value="animal" <?= $source === 'animal' ? 'checked' : '' ?>>
+                                <span>Tier aus DB</span>
+                            </label>
+                        </div>
+                        <div class="gene-parent__animal" data-animal-section <?= $source === 'animal' ? '' : 'hidden' ?>>
+                            <label class="gene-parent__animal-label" for="<?= $parentKey ?>-animal-input">Tier aus Datenbank auswählen</label>
+                            <div class="gene-parent__animal-input">
+                                <input type="text" id="<?= $parentKey ?>-animal-input" placeholder="Tiername, Morph oder Genetik suchen …" autocomplete="off" data-animal-input>
+                                <button type="button" class="btn btn-secondary" data-animal-clear><?= $selectedAnimal ? 'Auswahl entfernen' : 'Eingabe löschen' ?></button>
+                            </div>
+                            <div class="gene-parent__suggestions" data-animal-suggestions hidden></div>
+                            <div class="gene-parent__animal-summary" data-animal-summary>
+                                <?php if ($selectedAnimal): ?>
+                                    <p><strong><?= htmlspecialchars($selectedAnimal['name']) ?></strong><br><span class="text-muted"><?= htmlspecialchars($selectedAnimal['genetics'] ?: 'Keine Genetik hinterlegt') ?></span></p>
+                                <?php else: ?>
+                                    <p class="text-muted">Noch kein Tier ausgewählt.</p>
+                                <?php endif; ?>
+                            </div>
+                            <input type="hidden" name="parent_animals[<?= $parentKey ?>]" value="<?= $selectedAnimalId ?? '' ?>" data-animal-hidden>
+                        </div>
+                        <div class="gene-parent__tags" data-tag-container></div>
+                        <div class="gene-parent__input" data-manual-input>
+                            <input type="text" placeholder="Gen oder Bezeichnung eingeben …" data-input autocomplete="off">
+                            <button type="button" class="btn btn-secondary" data-clear>Zurücksetzen</button>
+                        </div>
+                        <div class="gene-parent__suggestions" data-suggestions hidden></div>
+                        <div data-hidden-inputs></div>
+                        <div class="gene-parent__morphs" data-morph-section>
+                            <div class="gene-parent__morph-header">
+                                <span>Zusätzliche Morph-Angaben (optional)</span>
+                                <button type="button" class="btn btn-secondary btn-small" data-morph-clear <?= empty($morphDetails) ? 'hidden' : '' ?>>Alle entfernen</button>
+                            </div>
+                            <div class="gene-parent__morph-input">
+                                <input type="text" placeholder="Morph suchen …" data-morph-input autocomplete="off">
+                            </div>
+                            <div class="gene-parent__suggestions" data-morph-suggestions hidden></div>
+                            <div class="gene-parent__morph-tags" data-morph-tags>
+                                <?php if (!empty($morphDetails)): ?>
+                                    <?php foreach ($morphDetails as $morph): ?>
+                                        <span class="morph-tag" data-morph-id="<?= (int)$morph['id'] ?>">
+                                            <span><?= htmlspecialchars($morph['name']) ?></span>
+                                            <button type="button" class="morph-tag__remove" data-remove-morph aria-label="<?= htmlspecialchars($morph['name']) ?> entfernen">&times;</button>
+                                        </span>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <p class="text-muted">Noch keine Morph-Angaben ergänzt.</p>
+                                <?php endif; ?>
+                            </div>
+                            <div data-morph-hidden-inputs>
+                                <?php foreach ($morphDetails as $morph): ?>
+                                    <input type="hidden" name="parent_morphs[<?= $parentKey ?>][]" value="<?= (int)$morph['id'] ?>">
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </section>
+                <?php endforeach; ?>
             </div>
             <button type="submit" class="btn" style="margin-top:1.5rem;align-self:flex-start;"><?= htmlspecialchars(content_value($settings, 'genetics_submit')) ?></button>
         </form>
@@ -169,9 +239,23 @@
                 </div>
             </section>
         <?php endif; ?>
+        <?php
+            $pageContext = [
+                'speciesSlug' => $selectedSpecies['slug'],
+                'genes' => $geneStatePayload,
+                'parentSelections' => $parentSelections,
+                'parentSlugSelections' => $parentSlugSelections,
+                'parentSources' => $parentSources,
+                'parentAnimals' => $parentAnimalSelections,
+                'animals' => $speciesAnimals,
+                'morphs' => $speciesMorphs,
+                'parentMorphSelections' => $parentMorphSelections,
+                'resultsExport' => $resultsExport,
+                'resultText' => $resultText,
+            ];
+        ?>
         <script>
-            window.GENETIC_GENE_DATA = <?= json_encode($geneStatePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-            window.GENETIC_PARENT_SELECTIONS = <?= json_encode($parentSelections, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            window.GENETICS_PAGE_CONTEXT = <?= json_encode($pageContext, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         </script>
     <?php elseif ($selectedSpecies): ?>
         <div class="card" style="margin-bottom:2rem;">
@@ -183,6 +267,11 @@
         <section style="margin-bottom:3rem;">
             <h2>Gesamtauswertung</h2>
             <div class="card">
+                <div class="result-actions">
+                    <button type="button" class="btn btn-secondary" data-copy-json>Als JSON kopieren</button>
+                    <button type="button" class="btn btn-secondary" data-copy-text>Als Text kopieren</button>
+                    <span class="copy-feedback" data-copy-feedback hidden>In Zwischenablage kopiert</span>
+                </div>
                 <table class="table">
                     <thead>
                         <tr>
@@ -207,6 +296,23 @@
                 </table>
             </div>
         </section>
+
+        <?php if (!empty($polygenicNotices)): ?>
+            <section class="polygenic-notes" style="margin-bottom:2rem;">
+                <h3>Polygen-Hinweise</h3>
+                <ul>
+                    <?php foreach ($polygenicNotices as $note): ?>
+                        <?php $gene = $note['gene']; ?>
+                        <li>
+                            <strong><?= htmlspecialchars($gene['name']) ?></strong>
+                            – Elter 1: <?= htmlspecialchars(gene_state_label($gene, $note['parent_states']['parent_one'])) ?>,
+                            Elter 2: <?= htmlspecialchars(gene_state_label($gene, $note['parent_states']['parent_two'])) ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+                <p class="text-muted">Polygenes Merkmal – Vererbung ist komplex und wird nicht prozentual berechnet.</p>
+            </section>
+        <?php endif; ?>
 
         <section style="margin-bottom:3rem;">
             <h2>Genbezogene Verteilung</h2>
