@@ -65,6 +65,14 @@
             <label>Inhalt
                 <textarea name="content" class="rich-text" required><?= htmlspecialchars($editArticle['content'] ?? '') ?></textarea>
             </label>
+            <?php
+                $componentTitle = 'Wiki-Medien';
+                $ownerType = 'wiki';
+                $ownerId = $editArticle['id'] ?? null;
+                $uploadToken = $mediaUploadToken ?? csrf_token();
+                $mediaItems = $wikiMedia ?? [];
+                include __DIR__ . '/partials/media_manager.php';
+            ?>
             <label style="display:flex;align-items:center;gap:0.5rem;">
                 <input type="checkbox" name="is_published" value="1" <?= !empty($editArticle['is_published']) ? 'checked' : '' ?>> Veröffentlichen
             </label>
