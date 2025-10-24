@@ -52,6 +52,7 @@
                 $updateEnabled = (bool)($updateCapabilities['enabled'] ?? false);
                 $environment = $updateCapabilities['environment'] ?? 'production';
                 $isSimulation = $environment !== 'production';
+                $buttonDisabled = (bool)($updateCapabilities['buttonDisabled'] ?? false);
                 $currentVersion = $settings['app_version'] ?? ($settings['footer_text'] ?? '');
             ?>
             <p class="text-sm text-slate-300">Führe einen Aktualisierungslauf inklusive <code>git pull --rebase</code>, <code>prisma migrate deploy</code> und <code>npm run build</code> aus. In nicht-produktiven Umgebungen werden die Befehle lediglich simuliert.</p>
@@ -68,10 +69,13 @@
                 <div class="rounded-lg border border-white/10 bg-night-800/60 p-4 text-xs text-slate-300">
                     <p><strong>Umgebung:</strong> <?= htmlspecialchars(strtoupper($environment)) ?><?= $isSimulation ? ' (Simulationsmodus)' : '' ?></p>
                     <p><strong>Status:</strong> <?= $updateEnabled ? 'Aktiviert' : 'Deaktiviert' ?> – Schalte per <code>ENABLE_UPDATE=true</code> frei.</p>
+                    <?php if ($isSimulation): ?>
+                        <p><strong>Hinweis:</strong> In nicht-produktiven Umgebungen bleibt der Button deaktiviert, der Lauf wird als Simulation protokolliert.</p>
+                    <?php endif; ?>
                 </div>
                 <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p class="text-xs text-slate-400">Button ist deaktiviert, solange die Funktion nicht freigeschaltet ist.</p>
-                    <button type="submit" class="btn" <?= $updateEnabled ? '' : 'disabled aria-disabled="true"' ?>>Update &amp; Deploy</button>
+                    <p class="text-xs text-slate-400">Button ist deaktiviert, solange die Funktion nicht freigeschaltet oder die Umgebung nicht Produktion ist.</p>
+                    <button type="submit" class="btn" <?= !$buttonDisabled ? '' : 'disabled aria-disabled="true"' ?>>Update &amp; Deploy</button>
                 </div>
             </form>
 

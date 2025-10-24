@@ -630,9 +630,12 @@ switch ($route) {
         $updateSummaryRaw = flash('update_summary');
         $updateSummary = $updateSummaryRaw ? json_decode($updateSummaryRaw, true) : null;
         $changelogEntries = get_recent_changelog_entries($pdo, 10);
+        $environment = app_environment();
+        $updateEnabled = updates_are_enabled();
         $updateCapabilities = [
-            'enabled' => updates_are_enabled(),
-            'environment' => app_environment(),
+            'enabled' => $updateEnabled,
+            'environment' => $environment,
+            'buttonDisabled' => !$updateEnabled || $environment !== 'production',
         ];
         view('admin/settings', compact('settings', 'flashSuccess', 'flashError', 'updateSummary', 'changelogEntries', 'updateCapabilities'));
         break;
