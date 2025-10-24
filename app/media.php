@@ -186,6 +186,91 @@ function get_gallery_collections(PDO $pdo): array
     }, $collections ?: []);
 }
 
+function get_gallery_collection(PDO $pdo, int $id): ?array
+{
+    $stmt = $pdo->prepare('SELECT * FROM gallery_collections WHERE id = :id');
+    $stmt->execute(['id' => $id]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        return null;
+    }
+
+    return [
+        'id' => (int)$row['id'],
+        'name' => $row['name'],
+        'slug' => $row['slug'],
+        'description' => $row['description'] ?? null,
+    ];
+}
+
+function create_gallery_collection(PDO $pdo, string $name, ?string $description = null): ?array
+{
+    $trimmedName = trim($name);
+    if ($trimmedName === '') {
+        return null;
+    }
+
+    $slug = slugify($trimmedName);
+    $uniqueSlug = ensure_unique_slug($pdo, 'gallery_collections', $slug);
+
+    $stmt = $pdo->prepare('INSERT INTO gallery_collections (name, slug, description) VALUES (:name, :slug, :description)');
+    $stmt->execute([
+        'name' => $trimmedName,
+        'slug' => $uniqueSlug,
+        'description' => $description !== null && trim($description) !== '' ? trim($description) : null,
+    ]);
+
+    $id = (int)$pdo->lastInsertId();
+    return get_gallery_collection($pdo, $id);
+}
+
+function update_gallery_collection(PDO $pdo, int $id, array $payload): ?array
+{
+    $collection = get_gallery_collection($pdo, $id);
+    if (!$collection) {
+        return null;
+    }
+
+    $name = isset($payload['name']) ? trim((string)$payload['name']) : $collection['name'];
+    $description = array_key_exists('description', $payload)
+        ? (trim((string)$payload['description']) !== '' ? trim((string)$payload['description']) : null)
+        : $collection['description'];
+
+    if ($name === '') {
+        $name = $collection['name'];
+    }
+
+    $slug = slugify($name);
+    $uniqueSlug = ensure_unique_slug($pdo, 'gallery_collections', $slug, $id);
+
+    $stmt = $pdo->prepare('UPDATE gallery_collections SET name = :name, slug = :slug, description = :description WHERE id = :id');
+    $stmt->execute([
+        'id' => $id,
+        'name' => $name,
+        'slug' => $uniqueSlug,
+        'description' => $description,
+    ]);
+
+    return get_gallery_collection($pdo, $id);
+}
+
+function delete_gallery_collection(PDO $pdo, int $id): void
+{
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare('UPDATE media SET owner_type = NULL, owner_id = NULL WHERE owner_type = "gallery" AND owner_id = :id');
+        $stmt->execute(['id' => $id]);
+
+        $stmt = $pdo->prepare('DELETE FROM gallery_collections WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
+}
+
 function get_gallery_collection_by_slug(PDO $pdo, string $slug): ?array
 {
     $stmt = $pdo->prepare('SELECT * FROM gallery_collections WHERE slug = :slug');
@@ -244,6 +329,115 @@ function count_gallery_media(PDO $pdo, ?int $collectionId = null): int
     }
     $stmt->execute();
     return (int)$stmt->fetchColumn();
+}
+
+function get_media_library(PDO $pdo, string $search = '', int $limit = 24, int $offset = 0): array
+{
+    $sql = 'SELECT * FROM media WHERE owner_type IS NULL';
+    $params = [];
+
+    if ($search !== '') {
+        $sql .= ' AND (file_name LIKE :search OR alt LIKE :search)';
+        $params['search'] = '%' . $search . '%';
+    }
+
+    $sql .= ' ORDER BY datetime(created_at) DESC, id DESC';
+    if ($limit > 0) {
+        $sql .= ' LIMIT :limit';
+    }
+    if ($offset > 0) {
+        $sql .= ' OFFSET :offset';
+    }
+
+    $stmt = $pdo->prepare($sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
+    }
+    if ($limit > 0) {
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    }
+    if ($offset > 0) {
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    }
+    $stmt->execute();
+    $rows = $stmt->fetchAll();
+    return array_map('format_media_row', $rows ?: []);
+}
+
+function count_media_library(PDO $pdo, string $search = ''): int
+{
+    $sql = 'SELECT COUNT(*) FROM media WHERE owner_type IS NULL';
+    $params = [];
+    if ($search !== '') {
+        $sql .= ' AND (file_name LIKE :search OR alt LIKE :search)';
+        $params['search'] = '%' . $search . '%';
+    }
+    $stmt = $pdo->prepare($sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
+    }
+    $stmt->execute();
+    return (int)$stmt->fetchColumn();
+}
+
+function assign_media_to_owner(PDO $pdo, array $ids, string $ownerType, ?int $ownerId): array
+{
+    $attachedIds = [];
+    $skippedIds = [];
+
+    if (!$ids) {
+        return [
+            'attached' => [],
+            'skipped' => [],
+            'total' => get_media_for_owner($pdo, $ownerType, $ownerId ?? 0),
+        ];
+    }
+
+    $pdo->beginTransaction();
+    try {
+        $nextOrder = get_next_media_sort_order($pdo, $ownerType, $ownerId);
+        $updateStmt = $pdo->prepare('UPDATE media SET owner_type = :owner_type, owner_id = :owner_id, sort_order = :sort_order, updated_at = CURRENT_TIMESTAMP WHERE id = :id AND (owner_type IS NULL OR owner_type = :owner_type)');
+
+        foreach ($ids as $rawId) {
+            $id = (int)$rawId;
+            if ($id <= 0) {
+                continue;
+            }
+
+            $updateStmt->execute([
+                'owner_type' => $ownerType,
+                'owner_id' => $ownerId,
+                'sort_order' => $nextOrder,
+                'id' => $id,
+            ]);
+
+            if ($updateStmt->rowCount() > 0) {
+                $attachedIds[] = $id;
+                $nextOrder += 1;
+            } else {
+                $skippedIds[] = $id;
+            }
+        }
+
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
+
+    $attachedItems = [];
+    foreach ($attachedIds as $id) {
+        $item = get_media_item($pdo, $id);
+        if ($item) {
+            $attachedItems[] = $item;
+        }
+    }
+
+    return [
+        'attached' => $attachedItems,
+        'skipped' => $skippedIds,
+        'total' => get_media_for_owner($pdo, $ownerType, $ownerId ?? 0),
+    ];
 }
 
 function get_recent_media(PDO $pdo, int $days = 7, int $limit = 8): array

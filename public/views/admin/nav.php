@@ -13,6 +13,7 @@
     <?php if (is_authorized('can_manage_settings')): ?>
         <a href="<?= BASE_URL ?>/index.php?route=admin/pages" class="<?= $currentRoute === 'admin/pages' ? $linkActive : $linkBase ?>">Seiten</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/news" class="<?= $currentRoute === 'admin/news' ? $linkActive : $linkBase ?>">Neuigkeiten</a>
+        <a href="<?= BASE_URL ?>/index.php?route=admin/gallery" class="<?= $currentRoute === 'admin/gallery' ? $linkActive : $linkBase ?>">Galerie</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/care" class="<?= $currentRoute === 'admin/care' ? $linkActive : $linkBase ?>">Pflegeleitfaden</a>
         <?php $isGeneticsRoute = $currentRoute === 'admin/genetics' || $currentRoute === 'admin/genetics/import'; ?>
         <a href="<?= BASE_URL ?>/index.php?route=admin/genetics" class="<?= $isGeneticsRoute && $currentRoute !== 'admin/genetics/import' ? $linkActive : $linkBase ?>">Genetik</a>

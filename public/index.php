@@ -806,6 +806,94 @@ switch ($route) {
         view('admin/news', compact('settings', 'newsPosts', 'editPost', 'flashSuccess', 'flashError', 'newsMedia', 'mediaUploadToken'));
         break;
 
+    case 'admin/gallery':
+        require_login();
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            flash('error', 'Kein Zugriff auf die Galerie-Verwaltung.');
+            redirect('admin/dashboard');
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_csrf_token('admin/gallery');
+            $action = $_POST['action'] ?? '';
+            try {
+                if ($action === 'create_collection') {
+                    $name = trim((string)($_POST['name'] ?? ''));
+                    $description = $_POST['description'] ?? null;
+                    $collection = create_gallery_collection($pdo, $name, $description);
+                    if ($collection) {
+                        flash('success', 'Sammlung angelegt.');
+                        redirect('admin/gallery', ['collection' => $collection['id']]);
+                    }
+                    flash('error', 'Name der Sammlung darf nicht leer sein.');
+                } elseif ($action === 'update_collection') {
+                    $collectionId = isset($_POST['collection_id']) ? (int)$_POST['collection_id'] : 0;
+                    if ($collectionId > 0) {
+                        $updated = update_gallery_collection($pdo, $collectionId, [
+                            'name' => $_POST['name'] ?? '',
+                            'description' => $_POST['description'] ?? null,
+                        ]);
+                        if ($updated) {
+                            flash('success', 'Sammlung aktualisiert.');
+                            redirect('admin/gallery', ['collection' => $updated['id']]);
+                        }
+                    }
+                    flash('error', 'Sammlung konnte nicht aktualisiert werden.');
+                } elseif ($action === 'delete_collection') {
+                    $collectionId = isset($_POST['collection_id']) ? (int)$_POST['collection_id'] : 0;
+                    if ($collectionId > 0) {
+                        delete_gallery_collection($pdo, $collectionId);
+                        flash('success', 'Sammlung gelöscht. Zugeordnete Medien wurden in den Medienpool verschoben.');
+                        redirect('admin/gallery');
+                    }
+                    flash('error', 'Sammlung konnte nicht gelöscht werden.');
+                }
+            } catch (Throwable $exception) {
+                flash('error', 'Aktion fehlgeschlagen: ' . $exception->getMessage());
+                redirect('admin/gallery');
+            }
+        }
+
+        $collections = get_gallery_collections($pdo);
+        $collectionId = isset($_GET['collection']) ? (int)$_GET['collection'] : null;
+        if ($collectionId && !$collections) {
+            $collectionId = null;
+        }
+        if ($collectionId) {
+            $exists = get_gallery_collection($pdo, $collectionId);
+            if (!$exists) {
+                flash('error', 'Sammlung wurde nicht gefunden.');
+                redirect('admin/gallery');
+            }
+        } elseif ($collections) {
+            $collectionId = $collections[0]['id'];
+        }
+
+        $activeCollection = $collectionId ? get_gallery_collection($pdo, $collectionId) : null;
+        $collectionMedia = $activeCollection ? get_gallery_media($pdo, $collectionId) : [];
+        $libraryCount = count_media_library($pdo);
+        $collectionCounts = [];
+        foreach ($collections as $collectionRow) {
+            $collectionCounts[(int)$collectionRow['id']] = count_gallery_media($pdo, (int)$collectionRow['id']);
+        }
+        $settings = get_all_settings($pdo);
+        $flashSuccess = flash('success');
+        $flashError = flash('error');
+        view('admin/gallery', [
+            'settings' => $settings,
+            'collections' => $collections,
+            'activeCollection' => $activeCollection,
+            'collectionMedia' => $collectionMedia,
+            'libraryCount' => $libraryCount,
+            'collectionCounts' => $collectionCounts,
+            'flashSuccess' => $flashSuccess,
+            'flashError' => $flashError,
+        ]);
+        break;
+
     case 'admin/animals':
         require_login();
         if (!is_authorized('can_manage_animals')) {
@@ -1822,6 +1910,98 @@ switch ($route) {
         echo json_encode([
             'status' => 'ok',
             'item' => $updated,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+
+    case 'api/media/library':
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            http_response_code(405);
+            header('Allow: GET');
+            echo json_encode(['status' => 'error', 'message' => 'Methode nicht erlaubt.']);
+            exit;
+        }
+
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Zugriff verweigert.']);
+            exit;
+        }
+
+        $perPage = max(1, min(60, (int)($_GET['perPage'] ?? 24)));
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $search = trim((string)($_GET['search'] ?? ''));
+        $offset = ($page - 1) * $perPage;
+
+        $items = get_media_library($pdo, $search, $perPage, $offset);
+        $total = count_media_library($pdo, $search);
+
+        echo json_encode([
+            'status' => 'ok',
+            'items' => $items,
+            'pagination' => [
+                'page' => $page,
+                'perPage' => $perPage,
+                'total' => $total,
+                'hasMore' => ($page * $perPage) < $total,
+            ],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+
+    case 'api/media/assign':
+        require_login();
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            header('Allow: POST');
+            echo json_encode(['status' => 'error', 'message' => 'Methode nicht erlaubt.']);
+            exit;
+        }
+
+        $user = current_user();
+        $allowedRoles = ['admin', 'editor'];
+        $hasPermission = $user && (in_array($user['role'], $allowedRoles, true) || is_authorized('can_manage_settings'));
+        if (!$hasPermission) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Zugriff verweigert.']);
+            exit;
+        }
+
+        $payload = json_decode((string)file_get_contents('php://input'), true);
+        if (!is_array($payload)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Ungültige Anfrage.']);
+            exit;
+        }
+
+        $token = $payload['_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+        if (!verify_csrf_token($token)) {
+            http_response_code(419);
+            echo json_encode(['status' => 'error', 'message' => 'CSRF-Token ungültig oder abgelaufen.']);
+            exit;
+        }
+
+        $ownerType = normalize_media_owner_type($payload['ownerType'] ?? $payload['owner_type'] ?? null);
+        $ownerId = normalize_nullable_id($payload['ownerId'] ?? $payload['owner_id'] ?? null);
+        $ids = array_filter($payload['mediaIds'] ?? $payload['ids'] ?? [], static fn($value) => (int)$value > 0);
+
+        if ($ownerType === null || $ownerId === null || empty($ids)) {
+            http_response_code(422);
+            echo json_encode(['status' => 'error', 'message' => 'Ungültige Zuordnung oder keine Medien ausgewählt.']);
+            exit;
+        }
+
+        $result = assign_media_to_owner($pdo, array_map('intval', $ids), $ownerType, (int)$ownerId);
+
+        echo json_encode([
+            'status' => 'ok',
+            'attached' => $result['attached'] ?? [],
+            'skipped' => $result['skipped'] ?? [],
+            'total' => $result['total'] ?? [],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
 

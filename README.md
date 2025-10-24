@@ -1,6 +1,6 @@
 # FeroxZ – PHP Reptile CMS
 
-**Aktuelle Version:** 3.6.0
+**Aktuelle Version:** 3.7.1
 
 FeroxZ ist ein PHP 8.3/SQLite basiertes CMS für Reptilienhöfe mit vollständig integriertem Admin-Backend, Medienverwaltung, Genetik-Rechner und automatisierten Deploy- sowie Import-Workflows. Der Fokus liegt auf einer dunklen UI mit orangefarbenen Akzenten, zugänglichen Formularen und einer klaren Trennung zwischen öffentlichen Seiten und geschützten Verwaltungsbereichen.
 
@@ -24,7 +24,7 @@ FeroxZ ist ein PHP 8.3/SQLite basiertes CMS für Reptilienhöfe mit vollständi
    ```bash
    cp .env.example .env
    ```
-   Passe mindestens `APP_URL`, `SITE_URL`, optionale Mail-Absender und – falls gewünscht – `DB_PATH` an. Die Update-Funktion ist ab Version 3.6.0 standardmäßig aktiv; setze `ENABLE_UPDATE=false`, wenn Deploys explizit gesperrt werden sollen.
+   Passe mindestens `APP_URL`, `SITE_URL`, optionale Mail-Absender und – falls gewünscht – `DB_PATH` an. Die Update-Funktion ist standardmäßig aktiv (seit Version 3.6.0); setze `ENABLE_UPDATE=false`, wenn Deploys explizit gesperrt werden sollen.
 3. **Verzeichnisse vorbereiten**
    ```bash
    mkdir -p storage/import_queue
@@ -54,6 +54,13 @@ Beim ersten Request wird `storage/database.sqlite` automatisch erzeugt und mit B
   - News: `title`, `content` (Pflicht) + `slug`, `excerpt`, `is_published`, `published_at`.
   - Abgabelisten: `title` (Pflicht) + `animal_id`/`animal_name`, `species`, `status`, `price`, `gender`, `contact_email`.
 
+## Galerie & Medienverwaltung
+
+- **React-Galerie**: Die öffentliche `/galerie`-Seite rendert vollständig clientseitig über React 18. Filterchips, animierte Karten und eine modale Lightbox sorgen für eine moderne Benutzererfahrung, während ein No-JS-Fallback die Inhalte serverseitig bereitstellt.
+- **Lightbox & Navigation**: Bilder lassen sich in voller Auflösung betrachten, durch Pfeiltasten oder Buttons wechseln und als Original in einem neuen Tab öffnen.
+- **Admin → Galerie**: Neue Verwaltungsseite mit Sammlungslisten, Beschreibungspflege sowie Dropzone. Medien können aus dem bestehenden Upload per Drag&Drop oder über den Medienpool zugewiesen werden.
+- **Medienpool**: Ein modaler Picker listet ungebundene Uploads, erlaubt Mehrfachauswahl mit Preview, Suche und „Mehr laden“-Pagination. Ausgewählte Bilder werden sortiert eingefügt, die Zählstände aktualisieren sich sofort.
+
 ## Update-Anleitung
 
 1. **Admin-Workflow (empfohlen)**
@@ -63,7 +70,7 @@ Beim ersten Request wird `storage/database.sqlite` automatisch erzeugt und mit B
    - Nach Erfolg zeigt ein Banner „Aktualisiert auf vX.Y.Z – Was ist neu?“ inklusive Modal mit den letzten Änderungen.
 2. **CLI-Simulation / Produktionslauf**
    ```bash
-   php -r 'require "app/bootstrap.php"; global $pdo; var_export(perform_system_update($pdo, "3.6.0", "CLI Test"));'
+   php -r 'require "app/bootstrap.php"; global $pdo; var_export(perform_system_update($pdo, "3.7.1", "CLI Test"));'
    ```
    - Ohne gesetzte ENV-Variablen läuft der Befehl im Simulationsmodus (APP_ENV default `production`, Befehle aber real ausgeführt – passe APP_ENV nach Bedarf an).
    - `ENABLE_UPDATE=false` deaktiviert die Funktion vollständig; true oder leer aktiviert sie.
@@ -106,10 +113,11 @@ node scripts/seed_check.mjs
 - [x] Medien-Dropzone mit Mehrfach-Upload, Varianten-Generierung und Sortierung
 - [x] Genetik-Rechner mit Tier-Autocomplete, Morph-Auswahl und JSON/Text-Export (inkl. Vitest-Suite)
 - [x] Öffentliche Tier- & Abgabeseiten mit Filtern, Detail-Galerien und Sire/Dam-Verknüpfung
-- [x] Galerie mit Kategorienfilter, Lazy-Load und Lightbox
+- [x] React-Galerie mit Kategorienfiltern, animierten Karten, Fehlermeldungen (Aria-Live) und Lightbox
+- [x] Admin-Galerie mit Medienpool-Auswahl, Sortierung, Beschreibungen und Fokusfalle für Barrierefreiheit
 - [x] Wiki- & News-Bereiche mit Detailansicht und Inline-Medien
 - [x] Command-Palette (Cmd/Ctrl+K) für Tiere, Morphs, News & Wiki
 - [x] Admin-Dashboard mit KPI-Kacheln und Liste letzter Uploads
 - [x] Update-&-Deploy-Button mit Changelog-Banner und standardmäßig aktivierter Update-Funktion
-- [x] Installations-, Update- und Test-Anleitung mit verifizierten Befehlen (3.6.0)
+- [x] Installations-, Update- und Test-Anleitung mit verifizierten Befehlen (3.7.1)
 

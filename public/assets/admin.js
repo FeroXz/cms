@@ -79,6 +79,345 @@
         return;
     }
 
+    const adminContainer = document.querySelector('[data-gallery-admin]');
+    if (!adminContainer) {
+        return;
+    }
+
+    const modal = adminContainer.querySelector('[data-gallery-library]');
+    const modalPanel = modal ? modal.querySelector('.gallery-library__panel') : null;
+    const openButton = adminContainer.querySelector('[data-gallery-open-library]');
+    const attachButton = modal ? modal.querySelector('[data-gallery-attach]') : null;
+    const closeTriggers = modal ? Array.from(modal.querySelectorAll('[data-gallery-close]')) : [];
+    const searchInput = modal ? modal.querySelector('[data-gallery-search]') : null;
+    const grid = modal ? modal.querySelector('[data-gallery-grid]') : null;
+    const emptyState = modal ? modal.querySelector('[data-gallery-empty]') : null;
+    const moreButton = modal ? modal.querySelector('[data-gallery-more]') : null;
+    const statusLabel = modal ? modal.querySelector('[data-gallery-status]') : null;
+    const galleryCountLabel = adminContainer.querySelector('[data-gallery-count]');
+    const libraryCountLabel = adminContainer.querySelector('[data-gallery-library-count]');
+    const toastContainer = adminContainer.querySelector('[data-media-toasts]');
+    const focusableSelector = 'a[href], button:not([disabled]), textarea, input:not([type="hidden"]):not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    const libraryUrl = adminContainer.dataset.libraryUrl || '';
+    const assignUrl = adminContainer.dataset.assignUrl || '';
+    const ownerType = adminContainer.dataset.ownerType || '';
+    const ownerId = adminContainer.dataset.ownerId || '';
+    const csrf = adminContainer.dataset.csrf || '';
+
+    if (!modal || !openButton || !attachButton || !grid || !statusLabel || !libraryUrl || !assignUrl || !ownerType || !ownerId) {
+        return;
+    }
+
+    const state = {
+        page: 1,
+        search: '',
+        hasMore: false,
+        loading: false,
+        selected: new Set(),
+    };
+
+    let lastFocusedElement = null;
+
+    function createToast(type, message) {
+        if (!toastContainer) {
+            return;
+        }
+        const toast = document.createElement('div');
+        toast.className = `toast toast--${type}`;
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+        requestAnimationFrame(() => {
+            toast.classList.add('is-visible');
+        });
+        setTimeout(() => {
+            toast.classList.remove('is-visible');
+            setTimeout(() => toast.remove(), 200);
+        }, 4000);
+    }
+
+    function getFocusableElements() {
+        if (!modal) {
+            return [];
+        }
+        return Array.from(modal.querySelectorAll(focusableSelector)).filter((element) =>
+            !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true' && element.offsetParent !== null
+        );
+    }
+
+    function focusFirstElement() {
+        const focusable = getFocusableElements();
+        if (focusable.length) {
+            focusable[0].focus();
+            return;
+        }
+        if (modalPanel) {
+            modalPanel.setAttribute('tabindex', '-1');
+            modalPanel.focus();
+        }
+    }
+
+    function restoreFocus() {
+        if (modalPanel) {
+            modalPanel.removeAttribute('tabindex');
+        }
+        if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+            lastFocusedElement.focus();
+        }
+        lastFocusedElement = null;
+    }
+
+    function handleFocusTrap(event) {
+        if (event.key !== 'Tab') {
+            return;
+        }
+        const focusable = getFocusableElements();
+        if (focusable.length === 0) {
+            event.preventDefault();
+            if (modalPanel) {
+                modalPanel.focus();
+            }
+            return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement;
+        if (event.shiftKey) {
+            if (active === first || !modal.contains(active)) {
+                event.preventDefault();
+                last.focus();
+            }
+        } else if (active === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
+
+    function toggleModal(show) {
+        if (show) {
+            modal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            lastFocusedElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+            requestAnimationFrame(focusFirstElement);
+        } else {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            restoreFocus();
+        }
+    }
+
+    function updateStatus() {
+        statusLabel.textContent = `${state.selected.size} ausgewählt`;
+        attachButton.disabled = state.selected.size === 0 || state.loading;
+    }
+
+    function setLoading(loading) {
+        state.loading = loading;
+        if (loading) {
+            modal.classList.add('is-loading');
+        } else {
+            modal.classList.remove('is-loading');
+        }
+        updateStatus();
+    }
+
+    function renderItems(items, append = false) {
+        if (!append) {
+            grid.innerHTML = '';
+        }
+
+        items.forEach((item) => {
+            if (!item || typeof item !== 'object') {
+                return;
+            }
+            const element = document.createElement('label');
+            element.className = 'gallery-library__item';
+
+            const previewUrl = (item.urls && (item.urls.thumb || item.urls.medium || item.urls.original)) || '';
+            if (previewUrl) {
+                const img = document.createElement('img');
+                img.src = previewUrl;
+                img.alt = item.alt || item.fileName || `Medium #${item.id}`;
+                element.appendChild(img);
+            }
+
+            const meta = document.createElement('div');
+            meta.className = 'gallery-library__item-meta';
+            meta.textContent = item.alt || item.fileName || `Medium #${item.id}`;
+            element.appendChild(meta);
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'gallery-library__checkbox';
+            checkbox.value = item.id;
+            checkbox.checked = state.selected.has(item.id);
+            checkbox.addEventListener('change', () => {
+                if (checkbox.checked) {
+                    state.selected.add(item.id);
+                } else {
+                    state.selected.delete(item.id);
+                }
+                updateStatus();
+            });
+            element.appendChild(checkbox);
+
+            element.addEventListener('click', (event) => {
+                if (event.target === checkbox) {
+                    return;
+                }
+                checkbox.checked = !checkbox.checked;
+                checkbox.dispatchEvent(new Event('change'));
+            });
+
+            grid.appendChild(element);
+        });
+
+        if (emptyState) {
+            emptyState.hidden = grid.children.length > 0;
+        }
+        if (moreButton) {
+            moreButton.hidden = !state.hasMore;
+        }
+    }
+
+    function fetchLibrary(page = 1, append = false) {
+        if (!libraryUrl) {
+            return;
+        }
+        setLoading(true);
+        const endpoint = new URL(libraryUrl, window.location.origin);
+        endpoint.searchParams.set('page', String(page));
+        endpoint.searchParams.set('perPage', '24');
+        if (state.search) {
+            endpoint.searchParams.set('search', state.search);
+        }
+
+        fetch(endpoint.toString(), { credentials: 'same-origin' })
+            .then((response) => response.json().then((json) => ({ ok: response.ok, json })))
+            .then(({ ok, json }) => {
+                if (!ok || !json || json.status !== 'ok') {
+                    throw new Error(json && json.message ? json.message : 'Medien konnten nicht geladen werden.');
+                }
+                if (!append) {
+                    state.selected.clear();
+                    grid.innerHTML = '';
+                }
+                const items = Array.isArray(json.items) ? json.items : [];
+                const pagination = json.pagination || {};
+                state.page = typeof pagination.page === 'number' ? pagination.page : page;
+                state.hasMore = Boolean(pagination.hasMore);
+                renderItems(items, append);
+                updateStatus();
+            })
+            .catch((error) => {
+                createToast('error', error.message || 'Medien konnten nicht geladen werden.');
+            })
+            .finally(() => {
+                setLoading(false);
+            });
+    }
+
+    let searchTimeout;
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            state.search = searchInput.value.trim();
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                state.page = 1;
+                fetchLibrary(1, false);
+            }, 250);
+        });
+    }
+
+    if (moreButton) {
+        moreButton.addEventListener('click', () => {
+            if (state.loading || !state.hasMore) {
+                return;
+            }
+            fetchLibrary(state.page + 1, true);
+        });
+    }
+
+    closeTriggers.forEach((trigger) => {
+        trigger.addEventListener('click', () => {
+            state.selected.clear();
+            updateStatus();
+            toggleModal(false);
+        });
+    });
+
+    modal.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            state.selected.clear();
+            updateStatus();
+            toggleModal(false);
+            return;
+        }
+        handleFocusTrap(event);
+    });
+
+    openButton.addEventListener('click', () => {
+        state.selected.clear();
+        updateStatus();
+        state.search = '';
+        state.page = 1;
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        toggleModal(true);
+        fetchLibrary(1, false);
+    });
+
+    attachButton.addEventListener('click', () => {
+        if (state.selected.size === 0 || state.loading) {
+            return;
+        }
+        setLoading(true);
+        const mediaIds = Array.from(state.selected);
+        fetch(assignUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ _token: csrf, ownerType, ownerId, mediaIds }),
+        })
+            .then((response) => response.json().then((json) => ({ ok: response.ok, json })))
+            .then(({ ok, json }) => {
+                if (!ok || !json || json.status !== 'ok') {
+                    throw new Error(json && json.message ? json.message : 'Zuordnung fehlgeschlagen.');
+                }
+                const attached = Array.isArray(json.attached) ? json.attached : [];
+                adminContainer.dispatchEvent(new CustomEvent('media:append', { detail: { items: attached } }));
+                if (attached.length) {
+                    if (galleryCountLabel) {
+                        const newTotal = Array.isArray(json.total) ? json.total.length : (parseInt(galleryCountLabel.textContent || '0', 10) + attached.length);
+                        galleryCountLabel.textContent = String(newTotal);
+                    }
+                    if (libraryCountLabel) {
+                        const currentLibrary = parseInt(libraryCountLabel.textContent || '0', 10);
+                        libraryCountLabel.textContent = String(Math.max(0, currentLibrary - attached.length));
+                    }
+                    createToast('success', `${attached.length} Medium${attached.length === 1 ? '' : 'er'} hinzugefügt.`);
+                } else {
+                    createToast('info', 'Keine neuen Medien übernommen.');
+                }
+                state.selected.clear();
+                updateStatus();
+                toggleModal(false);
+            })
+            .catch((error) => {
+                createToast('error', error.message || 'Zuordnung fehlgeschlagen.');
+            })
+            .finally(() => {
+                setLoading(false);
+            });
+    });
+})();
+
+(function () {
+    if (typeof document === 'undefined') {
+        return;
+    }
+
     const root = document.getElementById('morph-import-app');
     if (!root) {
         return;
@@ -820,6 +1159,25 @@
         if (orderButton) {
             orderButton.addEventListener('click', saveOrder);
         }
+
+        container.addEventListener('media:append', (event) => {
+            const detail = event.detail || {};
+            const appended = Array.isArray(detail.items) ? detail.items : [];
+            if (!appended.length) {
+                return;
+            }
+            appended.forEach((item) => {
+                if (!item || typeof item !== 'object') {
+                    return;
+                }
+                if (!mediaItems.find((entry) => entry.id === item.id)) {
+                    mediaItems.push(item);
+                }
+            });
+            orderDirty = false;
+            render();
+            createToast(toasts, 'success', `${appended.length} Medium${appended.length === 1 ? '' : 'er'} übernommen.`);
+        });
 
         render();
     });
