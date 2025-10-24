@@ -2,6 +2,8 @@
 
 FeroxZ ist ein leichtgewichtiges, auf PHP 8.3 und SQLite basierendes CMS für Reptilienhalter. Es vereint Tierverwaltung, Tierabgabe, private Tierakten sowie ein Admin-Backend mit granularen Berechtigungen. Alle Inhalte werden persistiert in einer lokalen SQLite-Datenbank gespeichert, Medien landen im Verzeichnis `uploads/`.
 
+**Aktuelle Version:** 3.0.2
+
 ## Kernfunktionen
 
 - 🦎 **Tierverwaltung** mit Art, Genetik, Herkunft, Besonderheiten, Bildern, Showcase-Flag und optionalem Besitzer.
@@ -77,6 +79,16 @@ Syntax-Check der PHP-Dateien:
 ```bash
 find public app -name "*.php" -print0 | xargs -0 -n1 php -l
 ```
+
+## Seed-Dateien prüfen
+
+Mit dem Skript `scripts/seed_check.mjs` lässt sich vor einem Deployment nachvollziehen, ob alle erwarteten Seed-Dateien im Verzeichnis `storage/seeds/` vorhanden sind.
+
+```bash
+node scripts/seed_check.mjs
+```
+
+Ohne Manifest-Datei (`storage/seeds/manifest.json`) listet das Skript alle gefundenen Seed-Dateien auf und weist darauf hin, wenn keine Seeds vorhanden sind. Liegt ein Manifest mit einem `required`-Array vor, werden fehlende Einträge explizit markiert und das Skript beendet sich mit einem Fehlercode.
 
 ## Standard-Login
 
