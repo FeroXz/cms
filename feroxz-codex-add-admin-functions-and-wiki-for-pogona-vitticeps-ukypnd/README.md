@@ -1,6 +1,6 @@
 # FeroxZ – PHP Reptile CMS
 
-**Aktuelle Version:** 3.5.1
+**Aktuelle Version:** 3.5.2
 
 FeroxZ ist ein leichtgewichtiges, auf PHP 8.3 und SQLite basierendes CMS für Reptilienhalter. Es vereint Tierverwaltung, Tierabgabe, private Tierakten sowie ein Admin-Backend mit granularen Berechtigungen. Alle Inhalte werden persistiert in einer lokalen SQLite-Datenbank gespeichert, Medien landen im Verzeichnis `uploads/`.
 
@@ -98,6 +98,7 @@ npm test
 - [x] Admin-Dashboard mit KPI-Kacheln und Liste letzter Uploads
 - [x] Update-&-Deploy-Button mit Changelog-Banner und Modal-Details
 - [x] Update-Kontrolle mit ENV-Gating und deaktiviertem Button in DEV (Simulationsmodus)
+- [x] Seed-Check-Skript lauffähig via Node.js ohne zusätzliche Loader
 
 ## Standard-Login
 
@@ -112,14 +113,14 @@ Bitte ändere das Passwort nach der ersten Anmeldung über die Benutzerverwaltun
 - [x] Drei Morph-CSV-Dateien (`pogona`, `cornsnake`, `ballpython`)
 - [x] Zehn Wiki-Artikel als Markdown im Ordner `seed/wiki/`
 - [x] Acht News-Beiträge als Markdown im Ordner `seed/news/`
-- [x] Seed-Check-Skript `scripts/seed_check.ts`
+- [x] Seed-Check-Skript `scripts/seed_check.mjs`
 
 ## Schnellstart
 
 1. Repository klonen und in das Projektverzeichnis wechseln.
 2. `.env.example` nach `.env` kopieren und Variablen anpassen.
 3. Schreibrechte für `storage/` und `uploads/` setzen.
-4. Optional: `node scripts/seed_check.ts` ausführen, um Seed-Vollständigkeit zu prüfen.
+4. Optional: `node scripts/seed_check.mjs` ausführen, um Seed-Vollständigkeit zu prüfen.
 5. Webserver auf `public/` zeigen lassen und im Browser öffnen.
 
 ## Update-Funktion
