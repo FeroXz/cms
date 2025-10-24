@@ -6,7 +6,7 @@ function ensure_default_settings(PDO $pdo): void
         'site_tagline' => 'Spezialisierte Pflege für Bartagamen und Hakennasennattern',
         'hero_intro' => 'Entdecke unsere Leidenschaft für verantwortungsvolle Haltung und Zucht.',
         'adoption_intro' => 'Diese Tiere suchen ein liebevolles Zuhause. Kontaktiere uns für mehr Informationen.',
-        'footer_text' => '© ' . date('Y') . ' FeroxZ CMS — Version 3.0.1',
+        'footer_text' => '© ' . date('Y') . ' FeroxZ CMS — Version 3.0.2',
         'contact_email' => 'info@example.com',
         'active_theme' => 'aurora',
     ];
