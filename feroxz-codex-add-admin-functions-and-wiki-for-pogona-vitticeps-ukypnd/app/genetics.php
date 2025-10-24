@@ -1701,7 +1701,6 @@ function transform_genetic_morph(array $record): array
         'source_url' => $record['source_url'] ?? null,
     ];
 }
-
 function update_morph_index_entry(array &$index, array $record): void
 {
     $index['records'][(int)$record['id']] = $record;

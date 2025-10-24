@@ -166,7 +166,6 @@
                     setExpanded(entry, false);
                 }
             });
-
             group.addEventListener('focusout', (event) => {
                 if (!group.contains(event.relatedTarget)) {
                     setExpanded(entry, false);
