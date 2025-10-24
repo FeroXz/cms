@@ -635,7 +635,7 @@ switch ($route) {
         $updateCapabilities = [
             'enabled' => $updateEnabled,
             'environment' => $environment,
-            'buttonDisabled' => !$updateEnabled || $environment !== 'production',
+            'buttonDisabled' => !$updateEnabled,
         ];
         view('admin/settings', compact('settings', 'flashSuccess', 'flashError', 'updateSummary', 'changelogEntries', 'updateCapabilities'));
         break;

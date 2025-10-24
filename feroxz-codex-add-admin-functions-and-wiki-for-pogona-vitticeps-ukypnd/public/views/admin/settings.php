@@ -70,11 +70,11 @@
                     <p><strong>Umgebung:</strong> <?= htmlspecialchars(strtoupper($environment)) ?><?= $isSimulation ? ' (Simulationsmodus)' : '' ?></p>
                     <p><strong>Status:</strong> <?= $updateEnabled ? 'Aktiviert' : 'Deaktiviert' ?> – Schalte per <code>ENABLE_UPDATE=true</code> frei.</p>
                     <?php if ($isSimulation): ?>
-                        <p><strong>Hinweis:</strong> In nicht-produktiven Umgebungen bleibt der Button deaktiviert, der Lauf wird als Simulation protokolliert.</p>
+                        <p><strong>Hinweis:</strong> In nicht-produktiven Umgebungen werden alle Befehle nur simuliert, die Ergebnisse erscheinen dennoch im Changelog.</p>
                     <?php endif; ?>
                 </div>
                 <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p class="text-xs text-slate-400">Button ist deaktiviert, solange die Funktion nicht freigeschaltet oder die Umgebung nicht Produktion ist.</p>
+                    <p class="text-xs text-slate-400">Button ist deaktiviert, solange die Funktion nicht freigeschaltet ist.</p>
                     <button type="submit" class="btn" <?= !$buttonDisabled ? '' : 'disabled aria-disabled="true"' ?>>Update &amp; Deploy</button>
                 </div>
             </form>
