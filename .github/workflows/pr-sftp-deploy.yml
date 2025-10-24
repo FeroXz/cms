@@ -47,7 +47,7 @@ jobs:
           set sftp:auto-confirm yes
           set net:max-retries 2
           set net:timeout 30
-          mkdir -p /cms
+
           mkdir -p /cms/zips
           # Spiegeln nach /cms: geänderte Dateien überschreiben UND entfernte Dateien löschen
           mirror -R --parallel=4 --overwrite --delete \
