@@ -2,6 +2,7 @@
 const APP_NAME = 'FeroxZ CMS';
 const DATA_PATH = __DIR__ . '/../storage/database.sqlite';
 const UPLOAD_PATH = __DIR__ . '/../public/uploads';
+const IMPORT_QUEUE_PATH = __DIR__ . '/../storage/import_queue';
 const BASE_URL = '';
 
 const PASSWORD_ALGO = PASSWORD_DEFAULT;

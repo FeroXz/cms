@@ -17,6 +17,7 @@
         <?php $isGeneticsRoute = $currentRoute === 'admin/genetics' || $currentRoute === 'admin/genetics/import'; ?>
         <a href="<?= BASE_URL ?>/index.php?route=admin/genetics" class="<?= $isGeneticsRoute && $currentRoute !== 'admin/genetics/import' ? $linkActive : $linkBase ?>">Genetik</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/genetics/import" class="<?= $currentRoute === 'admin/genetics/import' ? $linkActive : $linkBase ?>">Morph-Import</a>
+        <a href="<?= BASE_URL ?>/index.php?route=admin/imports" class="<?= $currentRoute === 'admin/imports' ? $linkActive : $linkBase ?>">CSV-Import</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/settings" class="<?= $currentRoute === 'admin/settings' ? $linkActive : $linkBase ?>">Einstellungen</a>
         <a href="<?= BASE_URL ?>/index.php?route=admin/content" class="<?= $currentRoute === 'admin/content' ? $linkActive : $linkBase ?>">Texte</a>
     <?php endif; ?>

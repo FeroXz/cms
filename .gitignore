@@ -1,5 +1,7 @@
 storage/*.sqlite
 storage/*.db
+storage/import_queue/*
+!storage/import_queue/.gitkeep
 uploads/*
 !uploads/.gitignore
 node_modules/

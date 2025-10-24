@@ -1279,6 +1279,72 @@ switch ($route) {
         view('admin/care', compact('settings', 'careArticles', 'editArticle', 'flashSuccess', 'flashError', 'wikiMedia', 'mediaUploadToken'));
         break;
 
+    case 'admin/imports':
+        require_login();
+        $user = current_user();
+        if (!$user || !is_authorized('can_manage_settings')) {
+            http_response_code(403);
+            view('errors/404', ['settings' => get_all_settings($pdo)]);
+            break;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_csrf_token('admin/imports');
+            if (empty($_FILES['csv']) || !is_uploaded_file($_FILES['csv']['tmp_name'])) {
+                flash('error', 'Bitte eine CSV-Datei auswählen.');
+                redirect('admin/imports');
+            }
+
+            $entity = strtolower(trim((string)($_POST['entity'] ?? '')));
+            $dryRun = !empty($_POST['dry_run']);
+            $filePath = $_FILES['csv']['tmp_name'];
+
+            try {
+                switch ($entity) {
+                    case 'animals':
+                        $result = import_animals_from_csv($pdo, $filePath, ['dry_run' => $dryRun, 'preview_limit' => 10]);
+                        break;
+                    case 'news':
+                        $result = import_news_from_csv($pdo, $filePath, ['dry_run' => $dryRun, 'preview_limit' => 10]);
+                        break;
+                    case 'adoptions':
+                        $result = import_adoption_listings_from_csv($pdo, $filePath, ['dry_run' => $dryRun, 'preview_limit' => 10]);
+                        break;
+                    case 'morphs':
+                        $result = import_genetic_morphs_from_csv($pdo, $filePath, ['dry_run' => $dryRun, 'preview_limit' => 10]);
+                        break;
+                    default:
+                        throw new InvalidArgumentException('Unbekannter Import-Typ.');
+                }
+
+                store_manual_import_result($entity, [
+                    'dry_run' => $dryRun,
+                    'summary' => $result['summary'] ?? [],
+                    'preview' => $result['preview'] ?? [],
+                ]);
+
+                $summary = $result['summary'] ?? [];
+                $created = (int)($summary['created'] ?? 0);
+                $updated = (int)($summary['updated'] ?? 0);
+                $message = $dryRun ? 'Dry-Run abgeschlossen.' : 'Import erfolgreich abgeschlossen.';
+                $message .= sprintf(' (%d neu, %d aktualisiert)', $created, $updated);
+                flash('success', $message);
+            } catch (Throwable $exception) {
+                flash('error', $exception->getMessage());
+            }
+
+            redirect('admin/imports');
+        }
+
+        $settings = get_all_settings($pdo);
+        $manualResult = consume_manual_import_result();
+        $queueOverview = get_import_queue_overview();
+        $autoResults = get_last_auto_import_results();
+        $flashSuccess = flash('success');
+        $flashError = flash('error');
+        view('admin/imports', compact('settings', 'manualResult', 'queueOverview', 'autoResults', 'flashSuccess', 'flashError'));
+        break;
+
     case 'admin/genetics':
         require_login();
         if (!is_authorized('can_manage_settings')) {

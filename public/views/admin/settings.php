@@ -68,13 +68,19 @@
                 </div>
                 <div class="rounded-lg border border-white/10 bg-night-800/60 p-4 text-xs text-slate-300">
                     <p><strong>Umgebung:</strong> <?= htmlspecialchars(strtoupper($environment)) ?><?= $isSimulation ? ' (Simulationsmodus)' : '' ?></p>
-                    <p><strong>Status:</strong> <?= $updateEnabled ? 'Aktiviert' : 'Deaktiviert' ?> – Schalte per <code>ENABLE_UPDATE=true</code> frei.</p>
+                    <p><strong>Status:</strong>
+                        <?php if ($updateEnabled): ?>
+                            Aktiviert (Standard) – Deaktivieren mit <code>ENABLE_UPDATE=false</code>.
+                        <?php else: ?>
+                            Deaktiviert (per ENV) – Aktivieren mit <code>ENABLE_UPDATE=true</code>.
+                        <?php endif; ?>
+                    </p>
                     <?php if ($isSimulation): ?>
                         <p><strong>Hinweis:</strong> In nicht-produktiven Umgebungen werden alle Befehle nur simuliert, die Ergebnisse erscheinen dennoch im Changelog.</p>
                     <?php endif; ?>
                 </div>
                 <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p class="text-xs text-slate-400">Button ist deaktiviert, solange die Funktion nicht freigeschaltet ist.</p>
+                    <p class="text-xs text-slate-400">Der Button bleibt nur deaktiviert, wenn die Funktion explizit über <code>ENABLE_UPDATE=false</code> abgeschaltet wurde.</p>
                     <button type="submit" class="btn" <?= !$buttonDisabled ? '' : 'disabled aria-disabled="true"' ?>>Update &amp; Deploy</button>
                 </div>
             </form>

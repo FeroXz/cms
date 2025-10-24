@@ -371,3 +371,323 @@ function get_public_animal_detail(PDO $pdo, int $id, bool $allowPrivate = false)
 
     return $row;
 }
+
+function find_animal_for_import(PDO $pdo, ?int $id, string $name, ?string $speciesSlug): ?array
+{
+    if ($id !== null) {
+        $stmt = $pdo->prepare('SELECT * FROM animals WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        $found = $stmt->fetch();
+        if ($found) {
+            return $found;
+        }
+    }
+
+    $name = trim($name);
+    if ($name === '') {
+        return null;
+    }
+
+    $params = ['name' => strtolower($name)];
+    $sql = 'SELECT * FROM animals WHERE LOWER(name) = :name';
+    if ($speciesSlug) {
+        $sql .= ' AND species_slug = :slug';
+        $params['slug'] = $speciesSlug;
+    }
+    $sql .= ' ORDER BY created_at DESC LIMIT 1';
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch();
+    if ($row) {
+        return $row;
+    }
+
+    if ($speciesSlug === null) {
+        $stmt = $pdo->prepare('SELECT * FROM animals WHERE LOWER(name) = :name COLLATE NOCASE ORDER BY created_at DESC LIMIT 1');
+        $stmt->execute(['name' => strtolower($name)]);
+        $fallback = $stmt->fetch();
+        return $fallback ?: null;
+    }
+
+    return null;
+}
+
+function resolve_user_id_by_username(PDO $pdo, ?string $username): ?int
+{
+    static $cache = [];
+    if ($username === null) {
+        return null;
+    }
+
+    $normalized = strtolower(trim($username));
+    if ($normalized === '') {
+        return null;
+    }
+
+    if (array_key_exists($normalized, $cache)) {
+        return $cache[$normalized];
+    }
+
+    $stmt = $pdo->prepare('SELECT id FROM users WHERE LOWER(username) = :username LIMIT 1');
+    $stmt->execute(['username' => $normalized]);
+    $row = $stmt->fetch();
+    $cache[$normalized] = $row ? (int)$row['id'] : null;
+
+    return $cache[$normalized];
+}
+
+function resolve_related_animal_id(PDO $pdo, array $values, string $idKey, string $nameKey, ?string $speciesSlug): ?int
+{
+    if (!empty($values[$idKey])) {
+        $id = normalize_nullable_id($values[$idKey]);
+        if ($id !== null) {
+            return $id;
+        }
+    }
+
+    if (!empty($values[$nameKey])) {
+        $related = find_animal_for_import($pdo, null, $values[$nameKey], $speciesSlug);
+        if ($related) {
+            return (int)$related['id'];
+        }
+    }
+
+    return null;
+}
+
+function interpret_boolean_field(?string $value, ?int $fallback = null): ?int
+{
+    if ($value === null) {
+        return $fallback;
+    }
+
+    $trimmed = trim($value);
+    if ($trimmed === '') {
+        return $fallback;
+    }
+
+    $normalized = filter_var($trimmed, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+    if ($normalized === null) {
+        return $fallback;
+    }
+
+    return $normalized ? 1 : 0;
+}
+
+function interpret_string(?string $value, $fallback = null)
+{
+    if ($value === null) {
+        return $fallback;
+    }
+
+    $trimmed = trim($value);
+    if ($trimmed === '') {
+        return $fallback;
+    }
+
+    return $trimmed;
+}
+
+function import_animals_from_csv(PDO $pdo, string $filePath, array $options = []): array
+{
+    $dryRun = !empty($options['dry_run']);
+    $previewLimit = isset($options['preview_limit']) ? (int)$options['preview_limit'] : 10;
+    $columnMap = array_change_key_case($options['column_map'] ?? [], CASE_LOWER);
+
+    if (!is_file($filePath) || !is_readable($filePath)) {
+        throw new InvalidArgumentException('CSV-Datei konnte nicht gelesen werden.');
+    }
+
+    if (($handle = fopen($filePath, 'rb')) === false) {
+        throw new RuntimeException('CSV-Datei konnte nicht geöffnet werden.');
+    }
+
+    $header = fgetcsv($handle);
+    if ($header === false) {
+        fclose($handle);
+        throw new InvalidArgumentException('CSV-Datei enthält keine Kopfzeile.');
+    }
+
+    $headerMap = [];
+    foreach ($header as $index => $label) {
+        $headerMap[strtolower(trim((string)$label))] = $index;
+    }
+
+    $resolveColumn = static function (string $field) use ($columnMap, $headerMap) {
+        $field = strtolower($field);
+        $mapped = $columnMap[$field] ?? $field;
+        $mapped = strtolower(trim((string)$mapped));
+        if ($mapped !== '' && array_key_exists($mapped, $headerMap)) {
+            return $headerMap[$mapped];
+        }
+        return $headerMap[$field] ?? null;
+    };
+
+    $required = ['name', 'species'];
+    $fields = [
+        'id', 'name', 'species', 'age', 'genetics', 'genetics_profile', 'origin', 'special_notes',
+        'description', 'image_path', 'owner_username', 'is_private', 'is_showcased', 'is_piebald',
+        'sex', 'status', 'price', 'sire_id', 'sire_name', 'dam_id', 'dam_name', 'admin_notes',
+    ];
+
+    $summary = [
+        'total' => 0,
+        'valid' => 0,
+        'created' => 0,
+        'updated' => 0,
+        'unchanged' => 0,
+        'duplicates' => 0,
+        'skipped' => 0,
+        'errors' => [],
+        'warnings' => [],
+    ];
+    $preview = [];
+    $seenKeys = [];
+    $lineNumber = 1;
+
+    if (!$dryRun) {
+        $pdo->beginTransaction();
+    }
+
+    try {
+        while (($row = fgetcsv($handle)) !== false) {
+            $lineNumber++;
+            $summary['total']++;
+
+            $values = [];
+            foreach ($fields as $field) {
+                $columnIndex = $resolveColumn($field);
+                $values[$field] = $columnIndex !== null ? trim((string)($row[$columnIndex] ?? '')) : '';
+            }
+
+            $missing = [];
+            foreach ($required as $field) {
+                if ($values[$field] === '') {
+                    $missing[] = $field;
+                }
+            }
+
+            if ($missing) {
+                $summary['skipped']++;
+                $summary['errors'][] = sprintf('Zeile %d: fehlende Pflichtfelder (%s)', $lineNumber, implode(', ', $missing));
+                if (count($preview) < $previewLimit) {
+                    $preview[] = [
+                        'line' => $lineNumber,
+                        'name' => $values['name'] ?? '',
+                        'species' => $values['species'] ?? '',
+                        'action' => 'error',
+                        'note' => 'Pflichtfelder fehlen',
+                    ];
+                }
+                continue;
+            }
+
+            $id = $values['id'] !== '' ? (int)$values['id'] : null;
+            $speciesSlug = normalize_species_slug($values['species']) ?? slugify($values['species']);
+            $nameSlug = slugify($values['name']);
+            $dedupeKey = $id !== null ? 'id:' . $id : $speciesSlug . '|' . $nameSlug;
+            if (isset($seenKeys[$dedupeKey])) {
+                $summary['duplicates']++;
+                if (count($preview) < $previewLimit) {
+                    $preview[] = [
+                        'line' => $lineNumber,
+                        'name' => $values['name'],
+                        'species' => $values['species'],
+                        'action' => 'duplicate',
+                        'note' => 'Bereits in dieser Datei verarbeitet',
+                    ];
+                }
+                continue;
+            }
+            $seenKeys[$dedupeKey] = true;
+
+            $existing = find_animal_for_import($pdo, $id, $values['name'], $speciesSlug);
+
+            $payload = [
+                'name' => $values['name'],
+                'species' => $values['species'],
+                'species_slug' => $speciesSlug,
+                'age' => interpret_string($values['age'], $existing['age'] ?? null),
+                'genetics' => interpret_string($values['genetics'], $existing['genetics'] ?? null),
+                'genetics_profile' => interpret_string($values['genetics_profile'], $existing['genetics_profile'] ?? null),
+                'origin' => interpret_string($values['origin'], $existing['origin'] ?? null),
+                'special_notes' => interpret_string($values['special_notes'], $existing['special_notes'] ?? null),
+                'description' => interpret_string($values['description'], $existing['description'] ?? null),
+                'image_path' => interpret_string($values['image_path'], $existing['image_path'] ?? null),
+                'owner_id' => resolve_user_id_by_username($pdo, $values['owner_username']) ?? ($existing['owner_id'] ?? null),
+                'is_private' => interpret_boolean_field($values['is_private'], $existing['is_private'] ?? 0),
+                'is_showcased' => interpret_boolean_field($values['is_showcased'], $existing['is_showcased'] ?? 0),
+                'is_piebald' => interpret_boolean_field($values['is_piebald'], $existing['is_piebald'] ?? 0),
+                'sex' => $values['sex'] !== '' ? (normalize_sex($values['sex']) ?? ($existing['sex'] ?? null)) : ($existing['sex'] ?? null),
+                'status' => $values['status'] !== '' ? (normalize_animal_status($values['status']) ?? ($existing['status'] ?? null)) : ($existing['status'] ?? null),
+                'price' => interpret_string($values['price'], $existing['price'] ?? null),
+                'sire_id' => resolve_related_animal_id($pdo, $values, 'sire_id', 'sire_name', $speciesSlug) ?? ($existing['sire_id'] ?? null),
+                'dam_id' => resolve_related_animal_id($pdo, $values, 'dam_id', 'dam_name', $speciesSlug) ?? ($existing['dam_id'] ?? null),
+                'admin_notes' => interpret_string($values['admin_notes'], $existing['admin_notes'] ?? null),
+            ];
+
+            $action = 'create';
+            if ($existing) {
+                $hasChanges = false;
+                foreach ($payload as $key => $value) {
+                    $existingValue = $existing[$key] ?? null;
+                    if (in_array($key, ['is_private', 'is_showcased', 'is_piebald'], true)) {
+                        $existingValue = (int)$existingValue;
+                        $value = $value === null ? $existingValue : (int)$value;
+                    }
+
+                    if ($value !== null && $value !== $existingValue) {
+                        $hasChanges = true;
+                        break;
+                    }
+                }
+
+                if ($hasChanges) {
+                    $action = 'update';
+                    $summary['updated']++;
+                    $summary['valid']++;
+                    if (!$dryRun) {
+                        update_animal($pdo, (int)$existing['id'], $payload);
+                    }
+                } else {
+                    $action = 'unchanged';
+                    $summary['unchanged']++;
+                }
+            } else {
+                $summary['created']++;
+                $summary['valid']++;
+                if (!$dryRun) {
+                    create_animal($pdo, $payload);
+                }
+            }
+
+            if (count($preview) < $previewLimit) {
+                $preview[] = [
+                    'line' => $lineNumber,
+                    'name' => $values['name'],
+                    'species' => $values['species'],
+                    'action' => $action,
+                    'note' => $existing ? 'Bestehender Datensatz' : 'Neu',
+                ];
+            }
+        }
+
+        if (!$dryRun) {
+            $pdo->commit();
+        }
+    } catch (Throwable $exception) {
+        if (!$dryRun && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        fclose($handle);
+        throw $exception;
+    }
+
+    fclose($handle);
+
+    return [
+        'summary' => $summary,
+        'preview' => $preview,
+    ];
+}

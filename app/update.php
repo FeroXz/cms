@@ -9,16 +9,8 @@ function updates_are_enabled(): bool
         $value = getenv('APP_ENABLE_UPDATE');
     }
 
-    if ($value === false) {
-        return false;
-    }
-
     $normalized = strtolower(trim((string)$value));
-    if ($normalized === '') {
-        return false;
-    }
-
-    if (in_array($normalized, ['1', 'true', 'yes', 'on'], true)) {
+    if ($value === false || $normalized === '') {
         return true;
     }
 
@@ -26,7 +18,12 @@ function updates_are_enabled(): bool
         return false;
     }
 
-    return filter_var($normalized, FILTER_VALIDATE_BOOLEAN) === true;
+    if (in_array($normalized, ['1', 'true', 'yes', 'on'], true)) {
+        return true;
+    }
+
+    $evaluated = filter_var($normalized, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+    return $evaluated !== false;
 }
 
 function app_environment(): string
@@ -92,7 +89,7 @@ function perform_system_update(PDO $pdo, string $version, string $notes = ''): a
     if (!$enabled) {
         return [
             'status' => 'disabled',
-            'message' => 'Die Update-Funktion ist deaktiviert. Bitte ENABLE_UPDATE in der Umgebung setzen.',
+            'message' => 'Die Update-Funktion wurde serverseitig deaktiviert.',
         ];
     }
 
