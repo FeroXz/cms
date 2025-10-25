@@ -65,5 +65,5 @@ $galleryPayload = [
 </script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
-<script src="<?= asset('gallery.js') ?>?v=<?= rawurlencode($settings['app_version'] ?? '3.7.1') ?>" defer></script>
+<script src="<?= asset('gallery.js') ?>?v=<?= rawurlencode($settings['app_version'] ?? '3.7.2') ?>" defer></script>
 <?php include __DIR__ . '/../partials/footer.php'; ?>

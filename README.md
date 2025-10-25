@@ -1,6 +1,6 @@
 # FeroxZ – PHP Reptile CMS
 
-**Aktuelle Version:** 3.7.1
+**Aktuelle Version:** 3.7.2
 
 FeroxZ ist ein PHP 8.3/SQLite basiertes CMS für Reptilienhöfe mit vollständig integriertem Admin-Backend, Medienverwaltung, Genetik-Rechner und automatisierten Deploy- sowie Import-Workflows. Der Fokus liegt auf einer dunklen UI mit orangefarbenen Akzenten, zugänglichen Formularen und einer klaren Trennung zwischen öffentlichen Seiten und geschützten Verwaltungsbereichen.
 
@@ -70,7 +70,7 @@ Beim ersten Request wird `storage/database.sqlite` automatisch erzeugt und mit B
    - Nach Erfolg zeigt ein Banner „Aktualisiert auf vX.Y.Z – Was ist neu?“ inklusive Modal mit den letzten Änderungen.
 2. **CLI-Simulation / Produktionslauf**
    ```bash
-   php -r 'require "app/bootstrap.php"; global $pdo; var_export(perform_system_update($pdo, "3.7.1", "CLI Test"));'
+   php -r 'require "app/bootstrap.php"; global $pdo; var_export(perform_system_update($pdo, "3.7.2", "CLI Test"));'
    ```
    - Ohne gesetzte ENV-Variablen läuft der Befehl im Simulationsmodus (APP_ENV default `production`, Befehle aber real ausgeführt – passe APP_ENV nach Bedarf an).
    - `ENABLE_UPDATE=false` deaktiviert die Funktion vollständig; true oder leer aktiviert sie.
@@ -119,5 +119,6 @@ node scripts/seed_check.mjs
 - [x] Command-Palette (Cmd/Ctrl+K) für Tiere, Morphs, News & Wiki
 - [x] Admin-Dashboard mit KPI-Kacheln und Liste letzter Uploads
 - [x] Update-&-Deploy-Button mit Changelog-Banner und standardmäßig aktivierter Update-Funktion
-- [x] Installations-, Update- und Test-Anleitung mit verifizierten Befehlen (3.7.1)
+- [x] Installations-, Update- und Test-Anleitung mit verifizierten Befehlen (3.7.2)
+- [x] Root-Fallback `index.php` leitet auf `public/index.php`, verhindert 404 bei falschem Document-Root
 
