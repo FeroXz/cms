@@ -15,4 +15,5 @@
 - [x] Umfangreiche Hakennasennatter-Genetik inklusive sämtlicher bestätigter Kombinationsmorphe als Referenzkarten.
 - [x] Neues „Nebula Prism“-Theme mit gläsernem Neon-Look, das im Admin-Bereich auswählbar ist.
 - [x] Dropdown-Navigation öffnet auf Touch-Geräten ohne ungewollte Seitenwechsel.
-- [x] Seed-Check steht als ausführbares Node-Skript (`node scripts/seed_check.mjs`) bereit und der Standard-Footer verweist nun auf Version 3.0.2.
+- [x] Seed-Check steht als ausführbares Node-Skript (`node scripts/seed_check.mjs`) bereit und der Standard-Footer verweist nun auf Version 3.1.0.
+- [x] Dragon-Reptiles-Edition mit Galerieverwaltung, Drag-&-Drop-Startseitenlayout und ZIP-Update-Manager für inhaltsneutrale Releases.
