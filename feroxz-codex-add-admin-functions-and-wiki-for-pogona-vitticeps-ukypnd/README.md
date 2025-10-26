@@ -1,8 +1,8 @@
-# FeroxZ – PHP Reptile CMS
+# Dragon Reptiles CMS – PHP Plattform für Terraristik
 
-FeroxZ ist ein leichtgewichtiges, auf PHP 8.3 und SQLite basierendes CMS für Reptilienhalter. Es vereint Tierverwaltung, Tierabgabe, private Tierakten sowie ein Admin-Backend mit granularen Berechtigungen. Alle Inhalte werden persistiert in einer lokalen SQLite-Datenbank gespeichert, Medien landen im Verzeichnis `uploads/`.
+Dragon Reptiles ist ein leichtgewichtiges, auf PHP 8.3 und SQLite basierendes CMS für Reptilienhalter. Es vereint Tierverwaltung, Tierabgabe, Wiki-Inhalte sowie ein Admin-Backend mit granularen Berechtigungen. Alle Inhalte werden persistiert in einer lokalen SQLite-Datenbank gespeichert, Medien landen im Verzeichnis `uploads/`.
 
-**Aktuelle Version:** 3.0.2
+**Aktuelle Version:** 3.1.0
 
 ## Kernfunktionen
 
@@ -13,6 +13,9 @@ FeroxZ ist ein leichtgewichtiges, auf PHP 8.3 und SQLite basierendes CMS für R
 - 👥 **Benutzer- & Rechteverwaltung**: Admins können weitere Accounts mit eingeschränkten Rechten (Tiere, Adoption, Einstellungen) anlegen.
 - 📈 **Dashboard** mit Kennzahlen zu Bestand, Abgabeinträgen und neuen Anfragen.
 - 💾 **Persistente Speicherung** per SQLite – keine zusätzliche Server-Software notwendig.
+- 🖼️ **Galerie-Verwaltung** inklusive Uploads, Tags und Startseiten-Highlights.
+- 🧩 **Drag-&-Drop-Startseitenlayout** für News-, Adoption-, Pflege- und Galerie-Sektionen.
+- 🔄 **ZIP-Update-Manager** im Adminbereich – Updates ohne Verlust eigener Inhalte einspielen.
 
 ## Systemvoraussetzungen
 

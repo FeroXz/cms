@@ -277,3 +277,82 @@ function content_value(array $settings, string $key): string
     return $settings[$key] ?? $default;
 }
 
+function get_home_section_definitions(): array
+{
+    return [
+        'highlights' => [
+            'label' => 'Tier-Highlights',
+            'description' => 'Präsentiert ausgewählte Tiere mit Bildern und Genetik.'
+        ],
+        'adoption' => [
+            'label' => 'Vermittlung',
+            'description' => 'Zeigt aktuelle Vermittlungstiere inklusive Kontaktmöglichkeiten.'
+        ],
+        'news' => [
+            'label' => 'News',
+            'description' => 'Listet die neuesten veröffentlichten Neuigkeiten auf.'
+        ],
+        'care' => [
+            'label' => 'Wiki & Pflegewissen',
+            'description' => 'Hebt die wichtigsten Pflege- und Haltungsartikel hervor.'
+        ],
+        'gallery' => [
+            'label' => 'Galerie',
+            'description' => 'Zeigt ausgewählte Bilder aus der Fotogalerie.'
+        ],
+    ];
+}
+
+function default_home_sections_layout(): array
+{
+    return array_map(
+        static fn($key) => ['key' => $key, 'enabled' => true],
+        array_keys(get_home_section_definitions())
+    );
+}
+
+function sanitize_home_sections_layout(array $layout): array
+{
+    $definitions = get_home_section_definitions();
+    $sanitized = [];
+    foreach ($layout as $entry) {
+        if (!is_array($entry) || empty($entry['key'])) {
+            continue;
+        }
+        $key = $entry['key'];
+        if (!isset($definitions[$key])) {
+            continue;
+        }
+        $sanitized[$key] = [
+            'key' => $key,
+            'enabled' => !empty($entry['enabled']),
+        ];
+    }
+
+    foreach ($definitions as $key => $_definition) {
+        if (!isset($sanitized[$key])) {
+            $sanitized[$key] = ['key' => $key, 'enabled' => true];
+        }
+    }
+
+    return array_values($sanitized);
+}
+
+function get_home_sections_layout(array $settings): array
+{
+    $raw = $settings['home_sections_layout'] ?? null;
+    if ($raw) {
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            return sanitize_home_sections_layout($decoded);
+        }
+    }
+
+    return default_home_sections_layout();
+}
+
+function serialize_home_sections_layout(array $layout): string
+{
+    return json_encode(sanitize_home_sections_layout($layout), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+}
+

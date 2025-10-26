@@ -1,5 +1,6 @@
 storage/*.sqlite
 storage/*.db
+storage/updates/
 uploads/*
 !uploads/.gitignore
 .DS_Store

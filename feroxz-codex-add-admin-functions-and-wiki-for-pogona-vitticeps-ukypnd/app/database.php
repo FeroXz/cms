@@ -212,4 +212,15 @@ function initialize_database(PDO $pdo): void
     if (!in_array('is_reference', $geneColumnNames, true)) {
         $pdo->exec('ALTER TABLE genetic_genes ADD COLUMN is_reference INTEGER NOT NULL DEFAULT 0');
     }
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS gallery_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        image_path TEXT NOT NULL,
+        tags TEXT,
+        is_featured INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )');
 }

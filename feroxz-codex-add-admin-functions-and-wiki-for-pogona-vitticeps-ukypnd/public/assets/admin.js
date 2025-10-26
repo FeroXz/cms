@@ -69,8 +69,111 @@
         }
     }
 
+    function updateLayoutInput(list) {
+        const selector = list.getAttribute('data-sortable-input');
+        if (!selector) {
+            return;
+        }
+        const input = document.querySelector(selector) || list.querySelector(selector);
+        if (!input) {
+            return;
+        }
+        const layout = Array.from(list.querySelectorAll('.sortable-item')).map((item) => {
+            const checkbox = item.querySelector('[data-section-enabled]');
+            return {
+                key: item.getAttribute('data-section-key'),
+                enabled: checkbox ? checkbox.checked : true,
+            };
+        });
+        input.value = JSON.stringify(layout);
+    }
+
+    function rebuildLayout(list, layout) {
+        const itemsByKey = {};
+        list.querySelectorAll('.sortable-item').forEach((item) => {
+            itemsByKey[item.getAttribute('data-section-key')] = item;
+        });
+        layout.forEach((entry) => {
+            const item = itemsByKey[entry.key];
+            if (!item) {
+                return;
+            }
+            const checkbox = item.querySelector('[data-section-enabled]');
+            if (checkbox) {
+                checkbox.checked = !!entry.enabled;
+            }
+            list.appendChild(item);
+        });
+        updateLayoutInput(list);
+    }
+
+    function initSortables() {
+        document.querySelectorAll('[data-sortable-list]').forEach((list) => {
+            let draggedItem = null;
+
+            list.addEventListener('dragstart', (event) => {
+                const item = event.target.closest('.sortable-item');
+                if (!item) {
+                    return;
+                }
+                draggedItem = item;
+                item.classList.add('dragging');
+                event.dataTransfer.effectAllowed = 'move';
+            });
+
+            list.addEventListener('dragover', (event) => {
+                if (!draggedItem) {
+                    return;
+                }
+                event.preventDefault();
+                const target = event.target.closest('.sortable-item');
+                if (!target || target === draggedItem) {
+                    return;
+                }
+                const rect = target.getBoundingClientRect();
+                const isAfter = (event.clientY - rect.top) > rect.height / 2;
+                list.insertBefore(draggedItem, isAfter ? target.nextSibling : target);
+            });
+
+            list.addEventListener('dragend', () => {
+                if (draggedItem) {
+                    draggedItem.classList.remove('dragging');
+                    draggedItem = null;
+                    updateLayoutInput(list);
+                }
+            });
+
+            list.querySelectorAll('[data-section-enabled]').forEach((checkbox) => {
+                checkbox.addEventListener('change', () => updateLayoutInput(list));
+            });
+
+            const form = list.closest('form');
+            if (form) {
+                const resetButton = form.querySelector('[data-reset-layout]');
+                if (resetButton) {
+                    resetButton.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        const hidden = form.querySelector('[data-sortable-input]');
+                        if (!hidden) {
+                            return;
+                        }
+                        try {
+                            const defaults = JSON.parse(hidden.defaultValue || '[]');
+                            rebuildLayout(list, defaults);
+                        } catch (error) {
+                            console.error('Layout konnte nicht zurückgesetzt werden', error);
+                        }
+                    });
+                }
+            }
+
+            updateLayoutInput(list);
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('textarea.rich-text').forEach(wrapTextarea);
+        initSortables();
     });
 })();
 

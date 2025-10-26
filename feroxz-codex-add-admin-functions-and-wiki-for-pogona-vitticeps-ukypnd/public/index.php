@@ -31,7 +31,9 @@ switch ($route) {
         $listings = get_public_listings($pdo);
         $latestNews = get_latest_published_news($pdo, 3);
         $careHighlights = array_slice(get_published_care_articles($pdo), 0, 3);
-        view('home', compact('settings', 'animals', 'listings', 'latestNews', 'careHighlights'));
+        $galleryItems = get_featured_gallery_items($pdo, 6);
+        $homeSections = get_home_sections_layout($settings);
+        view('home', compact('settings', 'animals', 'listings', 'latestNews', 'careHighlights', 'galleryItems', 'homeSections'));
         break;
 
     case 'animals':
@@ -121,6 +123,12 @@ switch ($route) {
         }
         break;
 
+    case 'gallery':
+        $settings = get_all_settings($pdo);
+        $items = get_gallery_items($pdo);
+        view('gallery/index', compact('settings', 'items'));
+        break;
+
     case 'care-guide':
         $settings = get_all_settings($pdo);
         $careArticles = get_published_care_articles($pdo);
@@ -188,6 +196,148 @@ switch ($route) {
         $geneticSpecies = get_genetic_species($pdo);
         $geneticGenes = get_all_genetic_genes($pdo);
         view('admin/dashboard', compact('settings', 'animals', 'listings', 'inquiries', 'pages', 'newsPosts', 'breedingPlans', 'careArticles', 'geneticSpecies', 'geneticGenes'));
+        break;
+
+    case 'admin/gallery':
+        require_login();
+        if (!is_authorized('can_manage_settings')) {
+            flash('error', 'Keine Berechtigung.');
+            redirect('admin/dashboard');
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_csrf_token('admin/gallery');
+            $id = isset($_POST['id']) ? (int)$_POST['id'] : null;
+            $title = trim($_POST['title'] ?? '');
+            $description = $_POST['description'] ?? '';
+            $tags = $_POST['tags'] ?? '';
+            $isFeatured = !empty($_POST['is_featured']);
+            $upload = $_FILES['image'] ?? [];
+            $uploadedPath = handle_upload($upload);
+
+            if ($title === '') {
+                flash('error', 'Bitte einen Titel angeben.');
+                redirect('admin/gallery');
+            }
+
+            if ($id) {
+                $item = find_gallery_item($pdo, $id);
+                if (!$item) {
+                    flash('error', 'Der Eintrag wurde nicht gefunden.');
+                    redirect('admin/gallery');
+                }
+
+                update_gallery_item($pdo, $id, [
+                    'title' => $title,
+                    'description' => $description,
+                    'tags' => $tags,
+                    'is_featured' => $isFeatured,
+                    'image_path' => $uploadedPath,
+                ]);
+                flash('success', 'Galerie-Eintrag aktualisiert.');
+            } else {
+                if (!$uploadedPath) {
+                    flash('error', 'Bitte ein Bild für den neuen Eintrag hochladen.');
+                    redirect('admin/gallery');
+                }
+
+                create_gallery_item($pdo, [
+                    'title' => $title,
+                    'description' => $description,
+                    'tags' => $tags,
+                    'is_featured' => $isFeatured,
+                    'image_path' => $uploadedPath,
+                ]);
+                flash('success', 'Galerie-Eintrag angelegt.');
+            }
+
+            redirect('admin/gallery');
+        }
+
+        $settings = get_all_settings($pdo);
+        $galleryItems = get_gallery_items($pdo);
+        $editingItem = null;
+        if (isset($_GET['edit'])) {
+            $editingItem = find_gallery_item($pdo, (int)$_GET['edit']);
+        }
+        $flashSuccess = flash('success');
+        $flashError = flash('error');
+        view('admin/gallery', compact('settings', 'galleryItems', 'editingItem', 'flashSuccess', 'flashError'));
+        break;
+
+    case 'admin/gallery/delete':
+        require_login();
+        if (!is_authorized('can_manage_settings')) {
+            flash('error', 'Keine Berechtigung.');
+            redirect('admin/dashboard');
+        }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_csrf_token('admin/gallery/delete');
+            $id = (int)($_POST['id'] ?? 0);
+            if ($id) {
+                delete_gallery_item($pdo, $id);
+                flash('success', 'Galerie-Eintrag entfernt.');
+            }
+        }
+        redirect('admin/gallery');
+        break;
+
+    case 'admin/home-layout':
+        require_login();
+        if (!is_authorized('can_manage_settings')) {
+            flash('error', 'Keine Berechtigung.');
+            redirect('admin/dashboard');
+        }
+
+        $settings = get_all_settings($pdo);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_csrf_token('admin/home-layout');
+            $layoutJson = $_POST['layout'] ?? '[]';
+            $decoded = json_decode($layoutJson, true);
+            $layout = is_array($decoded) ? sanitize_home_sections_layout($decoded) : default_home_sections_layout();
+            set_setting($pdo, 'home_sections_layout', serialize_home_sections_layout($layout));
+            flash('success', 'Startseiten-Layout wurde aktualisiert.');
+            redirect('admin/home-layout');
+        }
+
+        $layout = get_home_sections_layout($settings);
+        $definitions = get_home_section_definitions();
+        $flashSuccess = flash('success');
+        $flashError = flash('error');
+        view('admin/home_layout', compact('settings', 'layout', 'definitions', 'flashSuccess', 'flashError'));
+        break;
+
+    case 'admin/update':
+        require_login();
+        if (!is_authorized('can_manage_settings')) {
+            flash('error', 'Keine Berechtigung.');
+            redirect('admin/dashboard');
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_csrf_token('admin/update');
+            try {
+                $result = apply_update_package($pdo, $_FILES['package'] ?? []);
+                $message = 'Update erfolgreich angewendet. Aktualisierte Dateien: ' . ($result['files'] ?? 0);
+                if (!empty($result['version'])) {
+                    $message .= '. Neue Version: ' . $result['version'];
+                }
+                flash('success', $message);
+            } catch (RuntimeException $exception) {
+                flash('error', $exception->getMessage());
+            }
+            redirect('admin/update');
+        }
+
+        $settings = get_all_settings($pdo);
+        $currentVersion = $settings['app_version'] ?? APP_VERSION;
+        $availablePackages = array_values(array_filter(
+            glob(__DIR__ . '/../storage/updates/*') ?: [],
+            'is_dir'
+        ));
+        $flashSuccess = flash('success');
+        $flashError = flash('error');
+        view('admin/update', compact('settings', 'currentVersion', 'availablePackages', 'flashSuccess', 'flashError'));
         break;
 
     case 'admin/settings':
